@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-800 antialiased font-sans transition-colors duration-200;
+  }
+  
+  html.dark body {
+    background-color: #0b0f19 !important;
+    color: #f3f4f6 !important;
+  }
+
+  /* Custom Thin Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  /* Global Dark Mode Overrides */
+  html.dark ::-webkit-scrollbar-thumb {
+    background: #374151;
+  }
+  html.dark ::-webkit-scrollbar-thumb:hover {
+    background: #4b5563;
+  }
+
+  html.dark main {
+    background-color: #0b0f19 !important;
+  }
+
+  html.dark header {
+    background-color: #111827 !important;
+    border-color: #1f2937 !important;
+  }
+
+  /* Card Background & Borders */
+  html.dark .bg-white {
+    background-color: #111827 !important;
+    color: #f3f4f6 !important;
+    border-color: #1f2937 !important;
+  }
+
+  html.dark .border-gray-200,
+  html.dark .border-gray-150,
+  html.dark .border-gray-100 {
+    border-color: #1f2937 !important;
+  }
+
+  /* Text Override Utilities */
+  html.dark .text-gray-900,
+  html.dark .text-gray-800,
+  html.dark .text-gray-750,
+  html.dark .text-gray-700 {
+    color: #f3f4f6 !important;
+  }
+
+  html.dark .text-gray-600,
+  html.dark .text-gray-500,
+  html.dark .text-gray-450,
+  html.dark .text-gray-400 {
+    color: #9ca3af !important;
+  }
+
+  html.dark .text-gray-300 {
+    color: #d1d5db !important;
+  }
+
+  /* Inputs, selects, and textareas */
+  html.dark input,
+  html.dark select,
+  html.dark textarea {
+    background-color: #1f2937 !important;
+    color: #f3f4f6 !important;
+    border-color: #374151 !important;
+  }
+
+  html.dark input::placeholder,
+  html.dark textarea::placeholder {
+    color: #6b7280 !important;
+  }
+
+  html.dark select option {
+    background-color: #111827 !important;
+    color: #f3f4f6 !important;
+  }
+
+  /* Tables & Background Lists */
+  html.dark .bg-gray-50 {
+    background-color: #151c2c !important;
+  }
+
+  html.dark tr:hover,
+  html.dark .hover\:bg-gray-50:hover,
+  html.dark .hover\:bg-gray-55:hover {
+    background-color: #1f2937 !important;
+  }
+
+  html.dark thead tr {
+    background-color: #151c2c !important;
+  }
+
+  /* Charts customization for Dark Mode labels */
+  html.dark .recharts-cartesian-axis-tick-value {
+    fill: #9ca3af !important;
+  }
+
+  html.dark .recharts-legend-item-text {
+    color: #f3f4f6 !important;
+  }
+
+  html.dark .recharts-default-tooltip {
+    background-color: #111827 !important;
+    border-color: #1f2937 !important;
+  }
+
+  /* Notice translation cards and suggestions */
+  html.dark .bg-green-50 {
+    background-color: rgba(16, 185, 129, 0.1) !important;
+    color: #34d399 !important;
+    border-color: rgba(16, 185, 129, 0.2) !important;
+  }
+
+  html.dark .text-\[\#2E7D32\] {
+    color: #34d399 !important;
+  }
+
+  html.dark .border-green-150,
+  html.dark .border-green-100 {
+    border-color: rgba(16, 185, 129, 0.2) !important;
+  }
+}
