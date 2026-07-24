@@ -21,6 +21,7 @@ const sendEmail = async (options) => {
         user: process.env.SMTP_EMAIL,
         pass: process.env.SMTP_PASSWORD,
       },
+      family: 4, // Force IPv4 only to prevent Render ENETUNREACH errors over IPv6
     });
 
     const mailOptions = {
