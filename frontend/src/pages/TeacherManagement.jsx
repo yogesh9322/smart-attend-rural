@@ -9,6 +9,7 @@ import {
   FaChalkboardTeacher,
   FaEllipsisV,
   FaEye,
+  FaEyeSlash,
   FaEdit,
   FaKey,
   FaPowerOff,
@@ -47,6 +48,7 @@ const TeacherManagement = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState('');
   const [qualification, setQualification] = useState('');
   const [subject, setSubject] = useState('');
@@ -55,6 +57,7 @@ const TeacherManagement = () => {
 
   // Reset Password Field
   const [newPassword, setNewPassword] = useState('');
+  const [showResetPassword, setShowResetPassword] = useState(false);
 
   // Close dropdown menu when clicking outside
   useEffect(() => {
@@ -116,7 +119,7 @@ const TeacherManagement = () => {
   }, [successMsg, error]);
 
   // Open Add Modal
-  const openAddModal = () => {
+  const openAddModal = useCallback(() => {
     setName('');
     setEmail('');
     setPassword('');
@@ -127,7 +130,15 @@ const TeacherManagement = () => {
     setSelectedClasses([]);
     setError('');
     setIsAddModalOpen(true);
-  };
+  }, []);
+
+  // Auto-open Add modal if navigated with ?action=add
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'add') {
+      openAddModal();
+    }
+  }, [openAddModal]);
 
   // Open Edit Modal
   const openEditModal = (teacher) => {
@@ -188,7 +199,8 @@ const TeacherManagement = () => {
       }
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Error processing request.');
+      const serverMsg = err.response?.data?.message || err.message || 'Error processing request.';
+      setError(serverMsg);
     } finally {
       setFormLoading(false);
     }
@@ -221,7 +233,8 @@ const TeacherManagement = () => {
       }
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Error updating teacher.');
+      const serverMsg = err.response?.data?.message || err.message || 'Error updating teacher.';
+      setError(serverMsg);
     } finally {
       setFormLoading(false);
     }
@@ -245,7 +258,8 @@ const TeacherManagement = () => {
       }
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Error resetting password.');
+      const serverMsg = err.response?.data?.message || err.message || 'Error resetting password.';
+      setError(serverMsg);
     } finally {
       setFormLoading(false);
     }
@@ -573,6 +587,17 @@ const TeacherManagement = () => {
             </div>
 
             <form onSubmit={handleCreateSubmit} className="p-6 space-y-4 text-xs">
+              {error && (
+                <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-semibold flex items-center justify-between shadow-xs">
+                  <span className="flex items-center gap-2">
+                    <FaExclamationTriangle className="text-red-600 shrink-0" />
+                    <span>{error}</span>
+                  </span>
+                  <button type="button" onClick={() => setError('')} className="text-red-500 hover:text-red-800">
+                    <FaTimes />
+                  </button>
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">Full Name *</label>
@@ -612,14 +637,25 @@ const TeacherManagement = () => {
                 </div>
                 <div>
                   <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">Login Password *</label>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white font-semibold"
-                    placeholder="Min 6 characters"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-3 py-2 pr-10 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white font-semibold"
+                      placeholder="Min 6 characters"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                      tabIndex="-1"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <FaEyeSlash className="text-base" /> : <FaEye className="text-base" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -700,6 +736,17 @@ const TeacherManagement = () => {
             </div>
 
             <form onSubmit={handleEditSubmit} className="p-6 space-y-4 text-xs">
+              {error && (
+                <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-semibold flex items-center justify-between shadow-xs">
+                  <span className="flex items-center gap-2">
+                    <FaExclamationTriangle className="text-red-600 shrink-0" />
+                    <span>{error}</span>
+                  </span>
+                  <button type="button" onClick={() => setError('')} className="text-red-500 hover:text-red-800">
+                    <FaTimes />
+                  </button>
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">Full Name *</label>
@@ -893,17 +940,39 @@ const TeacherManagement = () => {
             </div>
 
             <form onSubmit={handleResetPasswordSubmit} className="p-6 space-y-4 text-xs">
+              {error && (
+                <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-semibold flex items-center justify-between shadow-xs">
+                  <span className="flex items-center gap-2">
+                    <FaExclamationTriangle className="text-red-600 shrink-0" />
+                    <span>{error}</span>
+                  </span>
+                  <button type="button" onClick={() => setError('')} className="text-red-500 hover:text-red-800">
+                    <FaTimes />
+                  </button>
+                </div>
+              )}
               <div>
                 <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">New Password *</label>
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white font-semibold"
-                  placeholder="Enter new password (min 6 characters)"
-                />
+                <div className="relative">
+                  <input
+                    type={showResetPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full px-3.5 py-2.5 pr-10 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white font-semibold"
+                    placeholder="Enter new password (min 6 characters)"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowResetPassword(!showResetPassword)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                    tabIndex="-1"
+                    aria-label={showResetPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showResetPassword ? <FaEyeSlash className="text-base" /> : <FaEye className="text-base" />}
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-200 dark:border-gray-700">

@@ -29,6 +29,16 @@ const NotificationSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    targetRole: {
+      type: String,
+      enum: ['all', 'admin', 'teacher', 'parent'],
+    },
+    readBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
   },
   {
     timestamps: true,

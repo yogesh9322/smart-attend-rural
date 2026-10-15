@@ -8,8 +8,8 @@
   }
   
   html.dark body {
-    background-color: #0b0f19 !important;
-    color: #f3f4f6 !important;
+    background-color: #0B1220 !important;
+    color: #F8FAFC !important;
   }
 
   /* Custom Thin Scrollbar */
@@ -30,106 +30,123 @@
 
   /* Global Dark Mode Overrides */
   html.dark ::-webkit-scrollbar-thumb {
-    background: #374151;
+    background: #263247;
   }
   html.dark ::-webkit-scrollbar-thumb:hover {
-    background: #4b5563;
+    background: #374151;
   }
 
   html.dark main {
-    background-color: #0b0f19 !important;
+    background-color: #0B1220 !important;
   }
 
   html.dark header {
-    background-color: #111827 !important;
-    border-color: #1f2937 !important;
+    background-color: #151E2E !important;
+    border-color: #263247 !important;
   }
 
   /* Card Background & Borders */
   html.dark .bg-white {
-    background-color: #111827 !important;
-    color: #f3f4f6 !important;
-    border-color: #1f2937 !important;
+    background-color: #151E2E !important;
+    color: #F8FAFC !important;
+    border-color: #263247 !important;
   }
 
+  html.dark .border-slate-200,
+  html.dark .border-slate-150,
+  html.dark .border-slate-100,
   html.dark .border-gray-200,
   html.dark .border-gray-150,
   html.dark .border-gray-100 {
-    border-color: #1f2937 !important;
+    border-color: #263247 !important;
   }
 
   /* Text Override Utilities */
+  html.dark .text-slate-900,
+  html.dark .text-slate-800,
+  html.dark .text-slate-750,
+  html.dark .text-slate-700,
   html.dark .text-gray-900,
   html.dark .text-gray-800,
   html.dark .text-gray-750,
   html.dark .text-gray-700 {
-    color: #f3f4f6 !important;
+    color: #F8FAFC !important;
   }
 
+  html.dark .text-slate-600,
+  html.dark .text-slate-500,
   html.dark .text-gray-600,
-  html.dark .text-gray-500,
+  html.dark .text-gray-500 {
+    color: #CBD5E1 !important;
+  }
+
+  html.dark .text-slate-400,
+  html.dark .text-slate-450,
   html.dark .text-gray-450,
   html.dark .text-gray-400 {
-    color: #9ca3af !important;
+    color: #94A3B8 !important;
   }
 
+  html.dark .text-slate-300,
   html.dark .text-gray-300 {
-    color: #d1d5db !important;
+    color: #CBD5E1 !important;
   }
 
   /* Inputs, selects, and textareas */
   html.dark input,
   html.dark select,
   html.dark textarea {
-    background-color: #1f2937 !important;
-    color: #f3f4f6 !important;
-    border-color: #374151 !important;
+    background-color: #182235 !important;
+    color: #F8FAFC !important;
+    border-color: #263247 !important;
   }
 
   html.dark input::placeholder,
   html.dark textarea::placeholder {
-    color: #6b7280 !important;
+    color: #94A3B8 !important;
   }
 
   html.dark select option {
-    background-color: #111827 !important;
-    color: #f3f4f6 !important;
+    background-color: #151E2E !important;
+    color: #F8FAFC !important;
   }
 
   /* Tables & Background Lists */
+  html.dark .bg-slate-50,
   html.dark .bg-gray-50 {
-    background-color: #151c2c !important;
+    background-color: #182235 !important;
   }
 
   html.dark tr:hover,
+  html.dark .hover\:bg-slate-50:hover,
   html.dark .hover\:bg-gray-50:hover,
   html.dark .hover\:bg-gray-55:hover {
-    background-color: #1f2937 !important;
+    background-color: #182235 !important;
   }
 
   html.dark thead tr {
-    background-color: #151c2c !important;
+    background-color: #182235 !important;
   }
 
   /* Charts customization for Dark Mode labels */
   html.dark .recharts-cartesian-axis-tick-value {
-    fill: #9ca3af !important;
+    fill: #94A3B8 !important;
   }
 
   html.dark .recharts-legend-item-text {
-    color: #f3f4f6 !important;
+    color: #F8FAFC !important;
   }
 
   html.dark .recharts-default-tooltip {
-    background-color: #111827 !important;
-    border-color: #1f2937 !important;
+    background-color: #151E2E !important;
+    border-color: #263247 !important;
   }
 
   /* Notice translation cards and suggestions */
   html.dark .bg-green-50 {
-    background-color: rgba(16, 185, 129, 0.1) !important;
+    background-color: rgba(6, 44, 29, 0.6) !important;
     color: #34d399 !important;
-    border-color: rgba(16, 185, 129, 0.2) !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
   }
 
   html.dark .text-\[\#2E7D32\] {
@@ -138,6 +155,6 @@
 
   html.dark .border-green-150,
   html.dark .border-green-100 {
-    border-color: rgba(16, 185, 129, 0.2) !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
   }
 }

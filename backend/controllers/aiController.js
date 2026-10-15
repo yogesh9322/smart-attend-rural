@@ -25,14 +25,20 @@ const getAIChatResponse = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Please provide a message query.' });
     }
 
-    // 1. Gather context data
-    const context = await getContextData(req.user);
+    // Fetch last 4 chat history logs for contextual continuity
+    const recentHistoryDocs = await AIChat.find({ userId: req.user.id })
+      .sort({ createdAt: -1 })
+      .limit(4);
+    const recentHistory = recentHistoryDocs.reverse();
+
+    // 1. Gather context data with conversation history
+    const context = await getContextData(req.user, recentHistory);
 
     // 2. Build system instructions prompt
     const prompt = buildPrompt(context, userLang);
 
     // 3. Request Gemini completion
-    const rawAnswer = await callGemini(prompt, message);
+    const rawAnswer = await callGemini(prompt, message, userLang);
 
     // 4. Format and sanitize response text
     const formattedAnswer = formatResponse(rawAnswer);

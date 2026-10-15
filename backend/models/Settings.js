@@ -11,6 +11,10 @@ const SettingsSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    timezone: {
+      type: String,
+      default: process.env.TIMEZONE || 'Asia/Kolkata',
+    },
     startTime: {
       type: String,
       default: '09:00', // HH:MM

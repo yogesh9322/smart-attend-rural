@@ -17,13 +17,18 @@ const logActivity = async (userId, action, details, req = null) => {
       userAgent = req.headers['user-agent'] || 'unknown';
     }
 
-    await ActivityLog.create({
-      userId,
+    const logData = {
       action,
       details,
       ipAddress,
       userAgent,
-    });
+    };
+
+    if (userId) {
+      logData.userId = userId;
+    }
+
+    await ActivityLog.create(logData);
   } catch (error) {
     console.error('Failed to log admin activity:', error.message);
   }

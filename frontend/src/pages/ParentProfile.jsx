@@ -63,7 +63,7 @@ const ParentProfile = () => {
   const [viewPhotoOpen, setViewPhotoOpen] = useState(false);
 
   // Password Form State
-  const [passwordAccordionOpen, setPasswordAccordionOpen] = useState(false);
+  const [passwordAccordionOpen, setPasswordAccordionOpen] = useState(true);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -584,36 +584,42 @@ const ParentProfile = () => {
 
           {/* SECTION 3: PERSONAL INFORMATION (EDITABLE) */}
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-2xs space-y-4">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider pb-2 border-b border-gray-150 dark:border-gray-700">
-              Personal Information
-            </h3>
+            <div className="pb-2 border-b border-gray-150 dark:border-gray-700 flex items-center justify-between flex-wrap gap-2">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                Personal Information
+              </h3>
+              <span className="text-[10px] text-gray-400 font-medium">
+                Fields marked with <span className="text-red-500 font-bold">*</span> are mandatory
+              </span>
+            </div>
 
             <form onSubmit={handleSaveProfile} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Parent Name */}
                 <div>
                   <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                    Parent Name
+                    Parent Name <span className="text-red-500 ml-0.5">*</span>
                   </label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none"
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
                   />
                 </div>
 
                 {/* Mobile Number */}
                 <div>
                   <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                    Mobile Number
+                    Mobile Number <span className="text-red-500 ml-0.5">*</span>
                   </label>
                   <input
-                    type="text"
+                    type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none"
+                    required
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
                   />
                 </div>
 
@@ -623,40 +629,43 @@ const ParentProfile = () => {
                     Alternate Mobile Number (Optional)
                   </label>
                   <input
-                    type="text"
+                    type="tel"
                     placeholder="Secondary contact number"
                     value={alternatePhone}
                     onChange={(e) => setAlternatePhone(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none"
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
                   />
                 </div>
 
                 {/* Email Address */}
                 <div>
                   <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                    Email Address
+                    Email Address <span className="text-red-500 ml-0.5">*</span>
                   </label>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none"
+                    required
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
                   />
                 </div>
 
                 {/* Preferred Language */}
                 <div>
                   <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                    Preferred Language
+                    Preferred Language <span className="text-red-500 ml-0.5">*</span>
                   </label>
                   <select
                     value={language}
                     onChange={(e) => setLanguage(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none"
+                    required
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
                   >
                     <option value="English">English</option>
                     <option value="Gujarati">Gujarati (ગુજરાતી)</option>
                     <option value="Hindi">Hindi (हिन्दी)</option>
+                    <option value="Marathi">Marathi (मराठी)</option>
                   </select>
                 </div>
 
@@ -670,7 +679,7 @@ const ParentProfile = () => {
                     placeholder="e.g. Agriculture / Teacher / Business"
                     value={occupation}
                     onChange={(e) => setOccupation(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none"
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
                   />
                 </div>
               </div>
@@ -679,21 +688,22 @@ const ParentProfile = () => {
               <div className="space-y-3 pt-2 border-t border-gray-150 dark:border-gray-700">
                 <div>
                   <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                    Residential Address
+                    Residential Address <span className="text-red-500 ml-0.5">*</span>
                   </label>
                   <input
                     type="text"
                     placeholder="House No., Street Name, Landmark"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none"
+                    required
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                      Village / City
+                      Village / City <span className="text-red-500 ml-0.5">*</span>
                     </label>
                     <input
                       type="text"
@@ -702,46 +712,62 @@ const ParentProfile = () => {
                         setCity(e.target.value);
                         setVillage(e.target.value);
                       }}
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none"
+                      required
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
                     />
                   </div>
 
                   <div>
                     <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                      State
+                      State <span className="text-red-500 ml-0.5">*</span>
                     </label>
                     <input
                       type="text"
                       value={state}
                       onChange={(e) => setState(e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none"
+                      required
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
                     />
                   </div>
 
                   <div>
                     <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                      PIN Code
+                      PIN Code <span className="text-red-500 ml-0.5">*</span>
                     </label>
                     <input
                       type="text"
                       placeholder="e.g. 380001"
                       value={pincode}
                       onChange={(e) => setPincode(e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none"
+                      required
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Save Changes Button */}
-              <div className="pt-2 flex items-center justify-between">
-                <button
-                  type="submit"
-                  disabled={savingProfile}
-                  className="px-5 py-2.5 bg-[#2E7D32] hover:bg-[#1B5E20] text-white text-xs font-bold rounded-lg transition disabled:opacity-50 cursor-pointer"
-                >
-                  {savingProfile ? 'Saving Changes...' : 'Save Changes'}
-                </button>
+              {/* Action Buttons: Save Changes & Change Password Shortcut */}
+              <div className="pt-2 flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="submit"
+                    disabled={savingProfile}
+                    className="px-5 py-2.5 bg-[#2E7D32] hover:bg-[#1B5E20] text-white text-xs font-bold rounded-lg transition disabled:opacity-50 cursor-pointer shadow-2xs"
+                  >
+                    {savingProfile ? 'Saving Changes...' : 'Save Changes'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPasswordAccordionOpen(true);
+                      document.getElementById('change-password-section')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-750 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <FaKey className="text-[#2E7D32] text-xs" />
+                    <span>Change Password</span>
+                  </button>
+                </div>
 
                 {lastUpdatedTime && (
                   <span className="text-[10px] text-gray-400 font-medium">
@@ -751,12 +777,9 @@ const ParentProfile = () => {
               </div>
             </form>
           </div>
-        </div>
 
-        {/* Right Column (Sections 4, 5, 6: Password, Security & Activity) */}
-        <div className="lg:col-span-1 space-y-5">
-          {/* SECTION 4: CHANGE PASSWORD (ACCORDION) */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xs overflow-hidden transition-all duration-300">
+          {/* SECTION 4: CHANGE PASSWORD */}
+          <div id="change-password-section" className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xs overflow-hidden transition-all duration-300">
             {/* Header Accordion Toggle */}
             <button
               type="button"
@@ -770,8 +793,13 @@ const ParentProfile = () => {
               className="w-full p-4 flex items-center justify-between text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider cursor-pointer hover:bg-gray-50/80 dark:hover:bg-gray-750 transition"
             >
               <div className="flex items-center gap-2">
-                <FaKey className="text-[#2E7D32]" />
+                <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-[#2E7D32] dark:text-emerald-400 flex items-center justify-center">
+                  <FaKey className="text-xs" />
+                </div>
                 <span>Change Password</span>
+                <span className="text-[10px] text-gray-400 font-normal lowercase tracking-normal hidden sm:inline">
+                  (update your account login credentials)
+                </span>
               </div>
               {passwordAccordionOpen ? (
                 <FaChevronUp className="text-gray-400 text-xs" />
@@ -782,7 +810,16 @@ const ParentProfile = () => {
 
             {/* Collapsible Body */}
             {passwordAccordionOpen && (
-              <div className="p-4 pt-1 border-t border-gray-150 dark:border-gray-700 space-y-4 animate-fadeIn">
+              <div className="p-5 pt-2 border-t border-gray-150 dark:border-gray-700 space-y-4 animate-fadeIn">
+                <div className="flex items-center justify-between flex-wrap gap-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                    Ensure your account is using a strong, unique password.
+                  </p>
+                  <span className="text-[10px] text-gray-400 font-medium">
+                    Fields marked with <span className="text-red-500 font-bold">*</span> are mandatory
+                  </span>
+                </div>
+
                 {passwordMsg.text && (
                   <div className={`p-3 rounded-lg text-xs font-semibold leading-relaxed border ${
                     passwordMsg.type === 'success'
@@ -793,56 +830,90 @@ const ParentProfile = () => {
                   </div>
                 )}
 
-                <form onSubmit={handleUpdatePassword} className="space-y-3.5">
-                  {/* Current Password */}
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                      Current Password
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showCurrentPassword ? 'text' : 'password'}
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        required
-                        className="w-full px-3 py-2 pr-9 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                        className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
-                      >
-                        {showCurrentPassword ? <FaEyeSlash className="text-xs" /> : <FaEye className="text-xs" />}
-                      </button>
+                <form onSubmit={handleUpdatePassword} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {/* Current Password */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
+                        Current Password <span className="text-red-500 ml-0.5">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showCurrentPassword ? 'text' : 'password'}
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          placeholder="Current password"
+                          required
+                          className="w-full px-3 py-2 pr-9 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
+                        />
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer p-0.5"
+                          title={showCurrentPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showCurrentPassword ? <FaEyeSlash className="text-xs" /> : <FaEye className="text-xs" />}
+                        </button>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* New Password */}
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                      New Password
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showNewPassword ? 'text' : 'password'}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        required
-                        className="w-full px-3 py-2 pr-9 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
-                      >
-                        {showNewPassword ? <FaEyeSlash className="text-xs" /> : <FaEye className="text-xs" />}
-                      </button>
+                    {/* New Password */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
+                        New Password <span className="text-red-500 ml-0.5">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showNewPassword ? 'text' : 'password'}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="8+ characters"
+                          required
+                          className="w-full px-3 py-2 pr-9 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
+                        />
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer p-0.5"
+                          title={showNewPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showNewPassword ? <FaEyeSlash className="text-xs" /> : <FaEye className="text-xs" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Confirm Password */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
+                        Confirm Password <span className="text-red-500 ml-0.5">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Re-enter password"
+                          required
+                          className="w-full px-3 py-2 pr-9 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
+                        />
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer p-0.5"
+                          title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showConfirmPassword ? <FaEyeSlash className="text-xs" /> : <FaEye className="text-xs" />}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
                   {/* Password Strength Indicator */}
                   {newPassword && (
-                    <div className="space-y-1">
+                    <div className="space-y-1 max-w-sm">
                       <div className="flex items-center justify-between text-[10px] font-bold">
                         <span className="text-gray-400 uppercase">Strength</span>
                         <span className={pwdStrength.score === 3 ? 'text-emerald-600' : pwdStrength.score === 2 ? 'text-amber-600' : 'text-red-500'}>
@@ -858,55 +929,34 @@ const ParentProfile = () => {
                     </div>
                   )}
 
-                  {/* Confirm Password */}
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                      Confirm Password
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                        className="w-full px-3 py-2 pr-9 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
-                      >
-                        {showConfirmPassword ? <FaEyeSlash className="text-xs" /> : <FaEye className="text-xs" />}
-                      </button>
-                    </div>
-                  </div>
-
                   {/* Requirement Checklist */}
                   <div className="p-3 bg-gray-50 dark:bg-gray-750 rounded-lg border border-gray-200 dark:border-gray-700 space-y-1 text-[11px]">
                     <span className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Password Requirements:</span>
-                    <div className={`flex items-center gap-1.5 ${pwdReqs.minLength ? 'text-emerald-700 dark:text-green-400' : 'text-gray-400'}`}>
-                      <FaCheckCircle className="text-[10px]" />
-                      <span>Minimum 8 characters</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 ${pwdReqs.hasUpper ? 'text-emerald-700 dark:text-green-400' : 'text-gray-400'}`}>
-                      <FaCheckCircle className="text-[10px]" />
-                      <span>One uppercase letter</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 ${pwdReqs.hasLower ? 'text-emerald-700 dark:text-green-400' : 'text-gray-400'}`}>
-                      <FaCheckCircle className="text-[10px]" />
-                      <span>One lowercase letter</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 ${pwdReqs.hasNumber ? 'text-emerald-700 dark:text-green-400' : 'text-gray-400'}`}>
-                      <FaCheckCircle className="text-[10px]" />
-                      <span>One number</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 ${pwdReqs.hasSpecial ? 'text-emerald-700 dark:text-green-400' : 'text-gray-400'}`}>
-                      <FaCheckCircle className="text-[10px]" />
-                      <span>One special character</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 ${pwdReqs.differentFromCurrent ? 'text-emerald-700 dark:text-green-400' : 'text-red-500 font-semibold'}`}>
-                      <FaCheckCircle className="text-[10px]" />
-                      <span>Must differ from current password</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5">
+                      <div className={`flex items-center gap-1.5 ${pwdReqs.minLength ? 'text-emerald-700 dark:text-green-400' : 'text-gray-400'}`}>
+                        <FaCheckCircle className="text-[10px]" />
+                        <span>Min 8 characters</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${pwdReqs.hasUpper ? 'text-emerald-700 dark:text-green-400' : 'text-gray-400'}`}>
+                        <FaCheckCircle className="text-[10px]" />
+                        <span>One uppercase</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${pwdReqs.hasLower ? 'text-emerald-700 dark:text-green-400' : 'text-gray-400'}`}>
+                        <FaCheckCircle className="text-[10px]" />
+                        <span>One lowercase</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${pwdReqs.hasNumber ? 'text-emerald-700 dark:text-green-400' : 'text-gray-400'}`}>
+                        <FaCheckCircle className="text-[10px]" />
+                        <span>One number</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${pwdReqs.hasSpecial ? 'text-emerald-700 dark:text-green-400' : 'text-gray-400'}`}>
+                        <FaCheckCircle className="text-[10px]" />
+                        <span>One special symbol</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${pwdReqs.differentFromCurrent ? 'text-emerald-700 dark:text-green-400' : 'text-red-500 font-semibold'}`}>
+                        <FaCheckCircle className="text-[10px]" />
+                        <span>Differs from current</span>
+                      </div>
                     </div>
                   </div>
 
@@ -922,7 +972,7 @@ const ParentProfile = () => {
                     <button
                       type="submit"
                       disabled={!isPasswordFormValid || savingPassword}
-                      className="px-4 py-2 bg-[#2E7D32] hover:bg-[#1B5E20] text-white text-xs font-bold rounded-lg transition disabled:opacity-50 cursor-pointer"
+                      className="px-5 py-2 bg-[#2E7D32] hover:bg-[#1B5E20] text-white text-xs font-bold rounded-lg transition disabled:opacity-50 cursor-pointer shadow-2xs"
                     >
                       {savingPassword ? 'Updating...' : 'Update Password'}
                     </button>
@@ -931,6 +981,10 @@ const ParentProfile = () => {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Right Column (Sections 5 & 6: Security & Activity) */}
+        <div className="lg:col-span-1 space-y-5">
 
           {/* SECTION 5: SECURITY INFORMATION */}
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-2xs space-y-3">
@@ -962,9 +1016,21 @@ const ParentProfile = () => {
                 <span className="text-gray-500 dark:text-gray-400 font-medium shrink-0">
                   Password Changed
                 </span>
-                <span className="font-bold text-gray-900 dark:text-white text-right">
-                  {user?.passwordChangedAt ? formatDateTime(user.passwordChangedAt) : 'Never'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-gray-900 dark:text-white text-right">
+                    {user?.passwordChangedAt ? formatDateTime(user.passwordChangedAt) : 'Never'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPasswordAccordionOpen(true);
+                      document.getElementById('change-password-section')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="text-[10px] text-emerald-600 dark:text-emerald-400 hover:underline font-semibold cursor-pointer"
+                  >
+                    Change
+                  </button>
+                </div>
               </div>
 
               <div className="py-2.5 flex items-center justify-between gap-3">

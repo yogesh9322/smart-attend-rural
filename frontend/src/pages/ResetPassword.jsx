@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { resetPassword } from '../services/api';
-import { FaSchool, FaLock, FaCheckCircle, FaSpinner, FaArrowLeft } from 'react-icons/fa';
+import { FaSchool, FaLock, FaCheckCircle, FaSpinner, FaArrowLeft, FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const ResetPassword = () => {
+  const { t } = useTranslation();
   const { token } = useParams();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -59,10 +63,10 @@ const ResetPassword = () => {
               <FaSchool className="text-3xl" />
             </div>
             <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-              Reset Password
+              {t('reset_password.title')}
             </h2>
             <p className="mt-2 text-sm text-gray-500 font-medium leading-relaxed">
-              Create a strong new security password for your school registry account.
+              {t('reset_password.subtitle')}
             </p>
           </div>
 
@@ -100,13 +104,22 @@ const ResetPassword = () => {
                     <input
                       id="password"
                       name="password"
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2E7D32] focus:border-transparent text-gray-900 placeholder-gray-400 sm:text-sm font-medium"
+                      className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2E7D32] focus:border-transparent text-gray-900 placeholder-gray-400 sm:text-sm font-medium"
                       placeholder="Enter new password"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 hover:text-gray-600 focus:outline-none cursor-pointer"
+                      tabIndex="-1"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <FaEyeSlash className="text-base text-gray-500" /> : <FaEye className="text-base text-gray-400" />}
+                    </button>
                   </div>
                 </div>
 
@@ -122,13 +135,22 @@ const ResetPassword = () => {
                     <input
                       id="confirmPassword"
                       name="confirmPassword"
-                      type="password"
+                      type={showConfirmPassword ? 'text' : 'password'}
                       required
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2E7D32] focus:border-transparent text-gray-900 placeholder-gray-400 sm:text-sm font-medium"
+                      className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2E7D32] focus:border-transparent text-gray-900 placeholder-gray-400 sm:text-sm font-medium"
                       placeholder="Confirm new password"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 hover:text-gray-600 focus:outline-none cursor-pointer"
+                      tabIndex="-1"
+                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showConfirmPassword ? <FaEyeSlash className="text-base text-gray-500" /> : <FaEye className="text-base text-gray-400" />}
+                    </button>
                   </div>
                 </div>
 
@@ -141,7 +163,7 @@ const ResetPassword = () => {
                   {loading ? (
                     <FaSpinner className="animate-spin text-xl" />
                   ) : (
-                    'Update Password'
+                    t('reset_password.resetButton')
                   )}
                 </button>
 
@@ -151,7 +173,7 @@ const ResetPassword = () => {
                     className="inline-flex items-center gap-1 text-xs font-bold text-gray-400 hover:text-[#2E7D32]"
                   >
                     <FaArrowLeft className="text-[10px]" />
-                    <span>Cancel and Back</span>
+                    <span>{t('forgot_password.backToLogin')}</span>
                   </Link>
                 </div>
               </form>

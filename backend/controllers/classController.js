@@ -1,14 +1,31 @@
 const Class = require('../models/Class');
 const User = require('../models/User');
 const sendEmail = require('../utils/sendEmail');
+const {
+  getSchoolName,
+  getAppBaseUrl,
+  buildClassAssignmentEmail,
+  buildClassEditEmail,
+} = require('../utils/emailBranding');
 
 const sendClassAssignmentEmail = async (teacher, schoolClass) => {
   try {
-    const loginUrl = `${process.env.CLIENT_URL || 'http://localhost:5174'}/login`;
+    const schoolName = await getSchoolName();
+    const appBaseUrl = getAppBaseUrl();
+
+    const emailContent = buildClassAssignmentEmail({
+      teacher,
+      schoolClass,
+      schoolName,
+      appBaseUrl,
+    });
+
     await sendEmail({
       email: teacher.email,
-      subject: 'SmartAttend - New Class Standard Assigned',
-      message: `Dear ${teacher.name},\n\nWe would like to inform you that you have been assigned as the class teacher for the following class standard:\n\nClass: ${schoolClass.grade}\nSection: ${schoolClass.section}\nRoom No: ${schoolClass.roomNo || 'N/A'}\nAcademic Year: ${schoolClass.academicYear}\n\nPlease log in at: ${loginUrl} to manage attendance, student registers, and review student leave requests.\n\nThank you,\nSmartAttend Administration`,
+      subject: emailContent.subject,
+      message: emailContent.message,
+      html: emailContent.html,
+      schoolName,
     });
   } catch (err) {
     console.error('Failed to send class assignment email:', err.message);
@@ -33,11 +50,24 @@ const sendClassEditEmail = async (teacher, oldClass, newClass) => {
 
     if (changes.length === 0) return;
 
-    const loginUrl = `${process.env.CLIENT_URL || 'http://localhost:5174'}/login`;
+    const schoolName = await getSchoolName();
+    const appBaseUrl = getAppBaseUrl();
+
+    const emailContent = buildClassEditEmail({
+      teacher,
+      oldClass,
+      newClass,
+      changes,
+      schoolName,
+      appBaseUrl,
+    });
+
     await sendEmail({
       email: teacher.email,
-      subject: `SmartAttend - Class Details Updated (${newClass.grade}-${newClass.section})`,
-      message: `Dear ${teacher.name},\n\nWe would like to inform you that the details of your assigned class standard have been updated by the administration:\n\n${changes.join('\n')}\n\nPlease log in at: ${loginUrl} to review your active student rosters.\n\nThank you,\nSmartAttend Administration`,
+      subject: emailContent.subject,
+      message: emailContent.message,
+      html: emailContent.html,
+      schoolName,
     });
   } catch (err) {
     console.error('Failed to send class edit notification email:', err.message);
@@ -146,7 +176,7 @@ const createClass = async (req, res, next) => {
       $addToSet: { assignedClasses: newClass._id },
     });
 
-    await sendClassAssignmentEmail(teacher, newClass);
+    sendClassAssignmentEmail(teacher, newClass);
 
     res.status(201).json({
       success: true,
@@ -206,13 +236,16 @@ const updateClass = async (req, res, next) => {
 
     if (isTeacherChanged) {
       if (newTeacherDoc) {
-        await sendClassAssignmentEmail(newTeacherDoc, schoolClass);
+        sendClassAssignmentEmail(newTeacherDoc, schoolClass);
       }
     } else {
-      const currentTeacher = await User.findById(schoolClass.classTeacherId);
-      if (currentTeacher) {
-        await sendClassEditEmail(currentTeacher, oldDetailsCopy, schoolClass);
-      }
+      User.findById(schoolClass.classTeacherId)
+        .then((currentTeacher) => {
+          if (currentTeacher) {
+            sendClassEditEmail(currentTeacher, oldDetailsCopy, schoolClass);
+          }
+        })
+        .catch(() => {});
     }
 
     res.status(200).json({
@@ -298,9 +331,12 @@ const transferStudents = async (req, res, next) => {
       { classId: targetClass._id }
     );
 
+    const srcGrade = String(sourceClass.grade).startsWith('Grade') ? sourceClass.grade : `Grade ${sourceClass.grade}`;
+    const tgtGrade = String(targetClass.grade).startsWith('Grade') ? targetClass.grade : `Grade ${targetClass.grade}`;
+
     res.status(200).json({
       success: true,
-      message: `Transferred ${result.modifiedCount || 0} students from Grade ${sourceClass.grade}-${sourceClass.section} to Grade ${targetClass.grade}-${targetClass.section}`,
+      message: `Transferred ${result.modifiedCount || 0} students from ${srcGrade}-${sourceClass.section} to ${tgtGrade}-${targetClass.section}`,
     });
   } catch (error) {
     next(error);
@@ -312,7 +348,7 @@ const transferStudents = async (req, res, next) => {
 // @access  Private/Admin
 const assignTeacher = async (req, res, next) => {
   try {
-    const { classTeacherId } = req.body;
+    const classTeacherId = req.body.classTeacherId || req.body.teacherId;
     let schoolClass = await Class.findById(req.params.id);
 
     if (!schoolClass) {
@@ -337,11 +373,15 @@ const assignTeacher = async (req, res, next) => {
     schoolClass.classTeacherId = classTeacherId;
     await schoolClass.save();
 
-    await sendClassAssignmentEmail(newTeacher, schoolClass);
+    sendClassAssignmentEmail(newTeacher, schoolClass);
+
+    const gradeLabel = String(schoolClass.grade).startsWith('Grade')
+      ? schoolClass.grade
+      : `Grade ${schoolClass.grade}`;
 
     res.status(200).json({
       success: true,
-      message: `Teacher ${newTeacher.name} assigned to Grade ${schoolClass.grade}-${schoolClass.section}`,
+      message: `Teacher ${newTeacher.name} assigned to ${gradeLabel}-${schoolClass.section}`,
       data: schoolClass,
     });
   } catch (error) {

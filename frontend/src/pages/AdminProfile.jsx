@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import ParentProfile from './ParentProfile';
+import SecurityActivityModal from '../components/SecurityActivityModal';
 import { getActivityLogs, uploadAvatar, updateProfile, changePassword } from '../services/api';
 
 const getMediaUrl = (path) => {
@@ -39,7 +40,17 @@ import {
   FaEyeSlash,
   FaLaptop,
   FaNetworkWired,
-  FaTimesCircle
+  FaTimesCircle,
+  FaFileCsv,
+  FaSearch,
+  FaFilter,
+  FaTimes,
+  FaCalendarAlt,
+  FaExclamationTriangle,
+  FaDownload,
+  FaUndoAlt,
+  FaChevronLeft,
+  FaChevronRight
 } from 'react-icons/fa';
 
 const AdminProfile = () => {
@@ -86,6 +97,9 @@ const AdminProfile = () => {
   const [passwordFormLoading, setPasswordFormLoading] = useState(false);
   const [showPasswordSuccessToast, setShowPasswordSuccessToast] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // Activity Log Modal State
+  const [showActivityModal, setShowActivityModal] = useState(false);
 
   // Password Validation Rules
   const validatePasswordRequirements = (pwd) => {
@@ -172,7 +186,15 @@ const AdminProfile = () => {
 
   // Helper function for audit badge formatting
   const getAuditBadgeInfo = (action = '') => {
-    const act = action.toUpperCase();
+    const act = (action || '').toUpperCase();
+    if (act.includes('FAILED')) {
+      return {
+        label: 'Failed Attempt',
+        badgeClass: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200 dark:border-rose-800',
+        dotClass: 'bg-rose-500 ring-4 ring-rose-100 dark:ring-rose-950',
+        icon: <FaTimesCircle className="text-[10px]" />
+      };
+    }
     if (act.includes('LOGIN')) {
       return {
         label: 'System Login',
@@ -197,7 +219,7 @@ const AdminProfile = () => {
         icon: <FaUserMinus className="text-[10px]" />
       };
     }
-    if (act.includes('UPDATE') || act.includes('EDIT') || act.includes('RESET') || act.includes('PASSWORD')) {
+    if (act.includes('UPDATE') || act.includes('EDIT') || act.includes('RESET') || act.includes('PASSWORD') || act.includes('STATUS')) {
       return {
         label: act.replace(/_/g, ' '),
         badgeClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800',
@@ -233,7 +255,7 @@ const AdminProfile = () => {
     try {
       setLogsLoading(true);
       const data = await getActivityLogs();
-      if (data.success) {
+      if (data && data.success) {
         setLogs(data.data || []);
       }
     } catch (err) {
@@ -246,6 +268,10 @@ const AdminProfile = () => {
   useEffect(() => {
     fetchActivityLogs();
   }, []);
+
+  const handleOpenActivityModal = () => {
+    setShowActivityModal(true);
+  };
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
@@ -629,74 +655,92 @@ const AdminProfile = () => {
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{t('common.name')}</label>
+                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                      {t('common.name')} <span className="text-red-500 ml-0.5">*</span>
+                    </label>
                     <input
                       type="text"
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="block w-full py-2.5 px-3 border border-gray-300 dark:border-gray-600 rounded-xl text-xs font-semibold text-gray-800 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
+                      className="block w-full py-2.5 px-3 border border-gray-300 dark:border-gray-600 rounded-xl text-xs font-semibold text-gray-800 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-[#2E7D32] focus:border-[#2E7D32] transition"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">{t('common.phone')}</label>
+                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                      {t('common.phone')} <span className="text-red-500 ml-0.5">*</span>
+                    </label>
                     <input
                       type="text"
+                      required
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="block w-full py-2.5 px-3 border border-gray-300 dark:border-gray-600 rounded-xl text-xs font-semibold text-gray-800 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
+                      className="block w-full py-2.5 px-3 border border-gray-300 dark:border-gray-600 rounded-xl text-xs font-semibold text-gray-800 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-[#2E7D32] focus:border-[#2E7D32] transition"
                     />
                   </div>
 
                   {user?.role !== 'parent' && (
                     <>
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Academic Qualification</label>
+                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                          Academic Qualification <span className="text-red-500 ml-0.5">*</span>
+                        </label>
                         <input
                           type="text"
+                          required
                           value={qualification}
                           onChange={(e) => setQualification(e.target.value)}
-                          className="block w-full py-2.5 px-3 border border-gray-300 dark:border-gray-600 rounded-xl text-xs font-semibold text-gray-800 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
+                          className="block w-full py-2.5 px-3 border border-gray-300 dark:border-gray-600 rounded-xl text-xs font-semibold text-gray-800 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-[#2E7D32] focus:border-[#2E7D32] transition"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Teaching Subject</label>
+                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                          Teaching Subject <span className="text-red-500 ml-0.5">*</span>
+                        </label>
                         <input
                           type="text"
+                          required
                           value={subject}
                           onChange={(e) => setSubject(e.target.value)}
-                          className="block w-full py-2.5 px-3 border border-gray-300 dark:border-gray-600 rounded-xl text-xs font-semibold text-gray-800 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
+                          className="block w-full py-2.5 px-3 border border-gray-300 dark:border-gray-600 rounded-xl text-xs font-semibold text-gray-800 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-[#2E7D32] focus:border-[#2E7D32] transition"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Teaching Experience</label>
+                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                          Teaching Experience <span className="text-red-500 ml-0.5">*</span>
+                        </label>
                         <input
                           type="text"
+                          required
                           value={experience}
                           onChange={(e) => setExperience(e.target.value)}
                           placeholder="e.g. 5 Years"
-                          className="block w-full py-2.5 px-3 border border-gray-300 dark:border-gray-600 rounded-xl text-xs font-semibold text-gray-800 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
+                          className="block w-full py-2.5 px-3 border border-gray-300 dark:border-gray-600 rounded-xl text-xs font-semibold text-gray-800 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-[#2E7D32] focus:border-[#2E7D32] transition"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Emergency Contact (Optional)</label>
+                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                          Emergency Contact (Optional)
+                        </label>
                         <input
                           type="text"
                           value={emergencyContact}
                           onChange={(e) => setEmergencyContact(e.target.value)}
                           placeholder="e.g. +91 9876543210"
-                          className="block w-full py-2.5 px-3 border border-gray-300 dark:border-gray-600 rounded-xl text-xs font-semibold text-gray-800 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
+                          className="block w-full py-2.5 px-3 border border-gray-300 dark:border-gray-600 rounded-xl text-xs font-semibold text-gray-800 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-[#2E7D32] focus:border-[#2E7D32] transition"
                         />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Residential Address (Optional)</label>
+                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                          Residential Address (Optional)
+                        </label>
                         <input
                           type="text"
                           value={address}
                           onChange={(e) => setAddress(e.target.value)}
                           placeholder="e.g. Main Village Road, Sector 4"
-                          className="block w-full py-2.5 px-3 border border-gray-300 dark:border-gray-600 rounded-xl text-xs font-semibold text-gray-800 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
+                          className="block w-full py-2.5 px-3 border border-gray-300 dark:border-gray-600 rounded-xl text-xs font-semibold text-gray-800 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-[#2E7D32] focus:border-[#2E7D32] transition"
                         />
                       </div>
                     </>
@@ -708,9 +752,16 @@ const AdminProfile = () => {
                 <button
                   type="submit"
                   disabled={formLoading}
-                  className="px-6 py-2.5 bg-[#2E7D32] hover:bg-[#1B5E20] text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
+                  className="px-6 py-2.5 bg-[#2E7D32] hover:bg-[#1B5E20] text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer flex items-center gap-2 disabled:opacity-60"
                 >
-                  <span>Save Changes</span>
+                  {formLoading ? (
+                    <>
+                      <FaSpinner className="animate-spin text-xs" />
+                      <span>Saving Changes...</span>
+                    </>
+                  ) : (
+                    <span>Save Changes</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -777,9 +828,22 @@ const AdminProfile = () => {
 
             {/* Recent Security Activity Stream */}
             <div className="pt-2">
-              <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-                Recent Security Activity
-              </h4>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Recent Security Activity
+                </h4>
+                {user?.role === 'admin' && (
+                  <button
+                    type="button"
+                    onClick={handleOpenActivityModal}
+                    className="text-xs font-semibold text-[#2E7D32] hover:text-emerald-700 dark:text-green-400 dark:hover:text-green-300 hover:underline flex items-center gap-1 transition-colors group cursor-pointer"
+                    title="View full authorized activity and security logs"
+                  >
+                    <span>View All Activity</span>
+                    <span className="text-[11px] transform group-hover:translate-x-0.5 transition-transform">&rarr;</span>
+                  </button>
+                )}
+              </div>
 
               {logsLoading ? (
                 <div className="flex items-center gap-2 py-4 text-xs font-semibold text-gray-400">
@@ -787,18 +851,18 @@ const AdminProfile = () => {
                   <span>Loading activity logs...</span>
                 </div>
               ) : logs.length > 0 ? (
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {logs.slice(0, 5).map((log) => {
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {logs.slice(0, 8).map((log) => {
                     const badgeInfo = getAuditBadgeInfo(log.action);
                     return (
-                      <div key={log._id} className="p-2.5 bg-gray-50/80 dark:bg-gray-750 rounded-xl border border-gray-200/80 dark:border-gray-700 flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className={`p-1 rounded-md text-[10px] font-bold ${badgeInfo.badgeClass}`}>
+                      <div key={log._id} className="p-2.5 bg-gray-50/80 dark:bg-gray-750 rounded-xl border border-gray-200/80 dark:border-gray-700 flex items-center justify-between text-xs hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+                        <div className="flex items-center gap-2 min-w-0 pr-2">
+                          <span className={`p-1 rounded-md text-[10px] font-bold shrink-0 ${badgeInfo.badgeClass}`}>
                             {badgeInfo.icon}
                           </span>
-                          <span className="font-semibold text-gray-800 dark:text-gray-200">{log.details}</span>
+                          <span className="font-semibold text-gray-800 dark:text-gray-200 truncate">{log.details}</span>
                         </div>
-                        <span className="text-[10px] font-medium text-gray-400">
+                        <span className="text-[10px] font-medium text-gray-400 shrink-0">
                           {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
@@ -815,6 +879,13 @@ const AdminProfile = () => {
           </div>
         </div>
       </div>
+
+      {/* Dedicated System Security & Audit Activity Logs Modal */}
+      <SecurityActivityModal
+        isOpen={showActivityModal}
+        onClose={() => setShowActivityModal(false)}
+        user={user}
+      />
     </div>
   );
 };

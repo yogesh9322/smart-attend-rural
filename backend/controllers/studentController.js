@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Class = require('../models/Class');
 const Notification = require('../models/Notification');
 const { uploadImage } = require('../services/cloudinaryService');
+const { logActivity } = require('../utils/activityLogger');
 
 // @desc    Get all students
 // @route   GET /api/students
@@ -159,10 +160,16 @@ const createStudent = async (req, res, next) => {
 
     // Create system notification
     await Notification.create({
+      senderId: req.user.id,
+      targetRole: 'admin',
       title: 'New Student Added',
       message: `Student ${name} (Roll No: ${rollNo}) has been registered in the database.`,
       category: 'user',
     });
+
+    if (req.user) {
+      await logActivity(req.user.id, 'CREATE_STUDENT', `Created student: ${name} (Roll: ${rollNo}, Adm: ${admissionNo})`, req);
+    }
 
     res.status(201).json({
       success: true,
@@ -186,16 +193,19 @@ const updateStudent = async (req, res, next) => {
     }
 
     // Update parent linkages if parent has changed
-    if (parentId && parentId !== student.parentId.toString()) {
+    const currentParentIdStr = student.parentId ? student.parentId.toString() : '';
+    if (parentId && parentId !== currentParentIdStr) {
       const newParent = await User.findById(parentId);
       if (!newParent || newParent.role !== 'parent') {
         return res.status(400).json({ success: false, message: 'Invalid parent user ID' });
       }
 
-      // Remove child from old parent
-      await User.findByIdAndUpdate(student.parentId, {
-        $pull: { children: student._id },
-      });
+      // Remove child from old parent if previously linked
+      if (student.parentId) {
+        await User.findByIdAndUpdate(student.parentId, {
+          $pull: { children: student._id },
+        });
+      }
 
       // Add child to new parent
       await User.findByIdAndUpdate(parentId, {
@@ -214,6 +224,10 @@ const updateStudent = async (req, res, next) => {
       { name, rollNo, admissionNo, classId, parentId, gender, dob, photoUrl, status },
       { new: true, runValidators: true }
     );
+
+    if (req.user) {
+      await logActivity(req.user.id, 'UPDATE_STUDENT', `Updated student details for: ${student.name}`, req);
+    }
 
     res.status(200).json({
       success: true,
@@ -234,12 +248,20 @@ const deleteStudent = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
 
-    // Remove child from parent user
-    await User.findByIdAndUpdate(student.parentId, {
-      $pull: { children: student._id },
-    });
+    const studentName = student.name;
+
+    // Remove child from parent user if linked
+    if (student.parentId) {
+      await User.findByIdAndUpdate(student.parentId, {
+        $pull: { children: student._id },
+      });
+    }
 
     await Student.findByIdAndDelete(req.params.id);
+
+    if (req.user) {
+      await logActivity(req.user.id, 'DELETE_STUDENT', `Deleted student: ${studentName}`, req);
+    }
 
     res.status(200).json({
       success: true,

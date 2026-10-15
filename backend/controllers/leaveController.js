@@ -5,6 +5,13 @@ const Class = require('../models/Class');
 const Notification = require('../models/Notification');
 const sendEmail = require('../utils/sendEmail');
 const sendSMS = require('../utils/sendSMS');
+const { logActivity } = require('../utils/activityLogger');
+const {
+  getSchoolName,
+  getAppBaseUrl,
+  buildLeaveCreatedEmail,
+  buildLeaveStatusEmail,
+} = require('../utils/emailBranding');
 
 // @desc    Create leave request
 // @route   POST /api/leaves
@@ -43,6 +50,10 @@ const createLeaveRequest = async (req, res, next) => {
       const fromStr = new Date(fromDate).toLocaleDateString();
       const toStr = new Date(toDate).toLocaleDateString();
 
+      // Resolve configured school name and base URL
+      const schoolName = await getSchoolName();
+      const appBaseUrl = getAppBaseUrl();
+
       // 1. Notify Class Teacher if assigned
       if (student?.classId?.classTeacherId) {
         notificationsToCreate.push({
@@ -57,13 +68,29 @@ const createLeaveRequest = async (req, res, next) => {
         // Send actual Email & SMS alert to the Class Teacher
         const teacherUser = await User.findById(student.classId.classTeacherId).select('name email phone');
         if (teacherUser) {
-          const teacherMsg = `New Leave Request: Leave requested for ${student.name} (${student.classId?.grade || 'Grade'}-${student.classId?.section || 'Section'}) from ${fromStr} to ${toStr}. Reason: "${reason}"`;
+          const classStr = `${student.classId?.grade || 'Grade'}-${student.classId?.section || 'Section'}`;
+          const teacherMsg = `New Leave Request: Leave requested for ${student.name} (${classStr}) from ${fromStr} to ${toStr}. Reason: "${reason}"`;
+
           if (teacherUser.email) {
             try {
+              const emailContent = buildLeaveCreatedEmail({
+                recipientName: teacherUser.name,
+                recipientRole: 'Class Teacher',
+                studentName: student.name,
+                classStr,
+                fromStr,
+                toStr,
+                reason,
+                schoolName,
+                appBaseUrl,
+              });
+
               await sendEmail({
                 email: teacherUser.email,
-                subject: `📩 New Leave Request: ${student.name}`,
-                message: teacherMsg
+                subject: emailContent.subject,
+                message: emailContent.message,
+                html: emailContent.html,
+                schoolName,
               });
               await logActivity(req.user.id, 'EMAIL_NOTIFICATION_SENT', `Sent leave create email alert to Teacher ${teacherUser.name} (${teacherUser.email})`);
             } catch (err) {
@@ -74,7 +101,7 @@ const createLeaveRequest = async (req, res, next) => {
             try {
               await sendSMS({
                 phone: teacherUser.phone,
-                message: `[SmartAttend] ${teacherMsg}`
+                message: `[SmartAttend] ${teacherMsg}\n\n${schoolName} | Powered by SmartAttend Rural`
               });
               await logActivity(req.user.id, 'SMS_NOTIFICATION_SENT', `Sent leave create SMS alert to Teacher ${teacherUser.name} (${teacherUser.phone})`);
             } catch (err) {
@@ -86,7 +113,7 @@ const createLeaveRequest = async (req, res, next) => {
 
       // 2. Notify all School Administrators
       const admins = await User.find({ role: 'admin' }).select('name email phone');
-      admins.forEach(async (admin) => {
+      for (const admin of admins) {
         notificationsToCreate.push({
           userId: admin._id,
           senderId: req.user.id,
@@ -96,13 +123,29 @@ const createLeaveRequest = async (req, res, next) => {
           isRead: false,
         });
 
-        const adminMsg = `Parent submitted leave request for ${student?.name || 'Student'} (${student?.classId?.grade || 'Grade'}-${student?.classId?.section || 'Section'}) from ${fromStr} to ${toStr}. Reason: "${reason}"`;
+        const classStr = `${student?.classId?.grade || 'Grade'}-${student?.classId?.section || 'Section'}`;
+        const adminMsg = `Parent submitted leave request for ${student?.name || 'Student'} (${classStr}) from ${fromStr} to ${toStr}. Reason: "${reason}"`;
+
         if (admin.email) {
           try {
+            const emailContent = buildLeaveCreatedEmail({
+              recipientName: admin.name,
+              recipientRole: 'Administrator',
+              studentName: student?.name || 'Student',
+              classStr,
+              fromStr,
+              toStr,
+              reason,
+              schoolName,
+              appBaseUrl,
+            });
+
             await sendEmail({
               email: admin.email,
-              subject: `📩 New Leave Request: ${student?.name || 'Student'}`,
-              message: adminMsg
+              subject: emailContent.subject,
+              message: emailContent.message,
+              html: emailContent.html,
+              schoolName,
             });
             await logActivity(req.user.id, 'EMAIL_NOTIFICATION_SENT', `Sent leave create email alert to Admin ${admin.name} (${admin.email})`);
           } catch (err) {
@@ -113,14 +156,14 @@ const createLeaveRequest = async (req, res, next) => {
           try {
             await sendSMS({
               phone: admin.phone,
-              message: `[SmartAttend] ${adminMsg}`
+              message: `[SmartAttend] ${adminMsg}\n\n${schoolName} | Powered by SmartAttend Rural`
             });
             await logActivity(req.user.id, 'SMS_NOTIFICATION_SENT', `Sent leave create SMS alert to Admin ${admin.name} (${admin.phone})`);
           } catch (err) {
             await logActivity(req.user.id, 'SMS_NOTIFICATION_FAILED', `Failed to send leave create SMS to Admin ${admin.name} (${admin.phone}). Error: ${err.message}`);
           }
         }
-      });
+      }
 
       if (notificationsToCreate.length > 0) {
         await Notification.insertMany(notificationsToCreate);
@@ -207,6 +250,9 @@ const updateLeaveStatus = async (req, res, next) => {
     leave.status = status;
     leave.remarks = remarks || '';
     leave.approvedBy = req.user.id;
+    if (status === 'Approved') {
+      leave.approvedAt = new Date();
+    }
     await leave.save();
 
     // Populate student and parent info for clean notification text
@@ -234,12 +280,16 @@ const updateLeaveStatus = async (req, res, next) => {
       });
     }
 
+    // Resolve configured school name and base URL
+    const schoolName = await getSchoolName();
+    const appBaseUrl = getAppBaseUrl();
+
     // 2. Dispatch SMS Alert to Parent (Twilio Gateway / Console Simulation)
     if (parentUser?.phone) {
       try {
         await sendSMS({
           phone: parentUser.phone,
-          message: `[SmartAttend] Leave Request ${status.toUpperCase()} for ${childName} (${fromStr} to ${toStr}). Reviewed by ${approverName}.${remarks ? ` Remarks: "${remarks}"` : ''}`,
+          message: `[SmartAttend] Leave Request ${status.toUpperCase()} for ${childName} (${fromStr} to ${toStr}). Reviewed by ${approverName}.${remarks ? ` Remarks: "${remarks}"` : ''}\n\n${schoolName} | Powered by SmartAttend Rural`,
         });
         await logActivity(req.user.id, 'SMS_NOTIFICATION_SENT', `Sent leave status (${status}) SMS alert to Parent ${parentUser.name || ''} (${parentUser.phone})`);
       } catch (err) {
@@ -251,14 +301,24 @@ const updateLeaveStatus = async (req, res, next) => {
     // 3. Dispatch Email Alert to Parent (SMTP Nodemailer / Console Simulation)
     if (parentUser?.email) {
       try {
+        const emailContent = buildLeaveStatusEmail({
+          parentName: parentUser.name,
+          childName,
+          fromStr,
+          toStr,
+          status,
+          approverName,
+          remarks,
+          schoolName,
+          appBaseUrl,
+        });
+
         await sendEmail({
           email: parentUser.email,
-          subject: `SmartAttend: Leave Request ${status} for ${childName}`,
-          message: `Dear ${parentUser.name || 'Parent'},\n\n` +
-                   `The leave application for ${childName} from ${fromStr} to ${toStr} has been ${status.toUpperCase()} by ${approverName}.\n\n` +
-                   `Status: ${status.toUpperCase()}\n` +
-                   `Remarks: "${remarks || 'None'}"\n\n` +
-                   `Thank you,\nSmartAttend School Management System`,
+          subject: emailContent.subject,
+          message: emailContent.message,
+          html: emailContent.html,
+          schoolName,
         });
         await logActivity(req.user.id, 'EMAIL_NOTIFICATION_SENT', `Sent leave status (${status}) email alert to Parent ${parentUser.name || ''} (${parentUser.email})`);
       } catch (err) {

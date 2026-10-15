@@ -3,10 +3,16 @@ const Student = require('../models/Student');
 const jwt = require('jsonwebtoken');
 const { logActivity } = require('../utils/activityLogger');
 const sendEmail = require('../utils/sendEmail');
+const {
+  getSchoolName,
+  getAppBaseUrl,
+  buildPasswordResetEmail,
+  buildWelcomeCredentialsEmail,
+} = require('../utils/emailBranding');
 
 // Generate JWT token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || 'super_secret_smart_attend_rural_key_998877', {
+const generateToken = (id, email, role) => {
+  return jwt.sign({ id, email, role }, process.env.JWT_SECRET || 'super_secret_smart_attend_rural_key_998877', {
     expiresIn: process.env.JWT_EXPIRE || '30d',
   });
 };
@@ -16,16 +22,7 @@ const generateToken = (id) => {
 // @access  Private/Admin
 const registerUser = async (req, res, next) => {
   try {
-    const { name, email, password, role, phone, assignedClasses, children } = req.body;
-
-    // Check if user already exists
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(400).json({ success: false, message: 'User already exists' });
-    }
-
-    // Create user
-    const user = await User.create({
+    const {
       name,
       email,
       password,
@@ -33,6 +30,53 @@ const registerUser = async (req, res, next) => {
       phone,
       assignedClasses,
       children,
+      qualification,
+      subject,
+      experience,
+      teacherId,
+      employeeId
+    } = req.body;
+
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide full name, email address, password, and role.'
+      });
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    // Check if user already exists
+    const userExists = await User.findOne({ email: normalizedEmail });
+    if (userExists) {
+      const existingRoleLabel =
+        userExists.role === 'parent'
+          ? 'Parent'
+          : userExists.role === 'teacher'
+          ? 'Teacher'
+          : userExists.role === 'admin'
+          ? 'Administrator'
+          : userExists.role;
+      return res.status(400).json({
+        success: false,
+        message: `An account with email "${normalizedEmail}" is already registered as a ${existingRoleLabel}. Please use a unique email address.`
+      });
+    }
+
+    // Create user
+    const user = await User.create({
+      name: String(name).trim(),
+      email: normalizedEmail,
+      password,
+      role,
+      phone: phone ? String(phone).trim() : '',
+      assignedClasses: assignedClasses || [],
+      children: children || [],
+      qualification: qualification ? String(qualification).trim() : '',
+      subject: subject ? String(subject).trim() : '',
+      experience: experience ? String(experience).trim() : '',
+      teacherId,
+      employeeId
     });
 
     if (req.user) {
@@ -40,19 +84,35 @@ const registerUser = async (req, res, next) => {
       
       const Notification = require('../models/Notification');
       await Notification.create({
+        senderId: req.user.id,
+        targetRole: 'admin',
         title: `New ${role === 'teacher' ? 'Teacher' : 'Parent'} Added`,
         message: `${role === 'teacher' ? 'Teacher' : 'Parent'} account registered for ${name} (${email}).`,
         category: 'user',
       });
     }
 
+    // Resolve configured school name and base URL
+    const schoolName = await getSchoolName();
+    const appBaseUrl = getAppBaseUrl();
+    const loginUrl = `${appBaseUrl}/login`;
+
     // Send registration email notification
     try {
-      const loginUrl = `${process.env.CLIENT_URL || 'http://localhost:5174'}/login`; // dynamic frontend URL
+      const emailContent = buildWelcomeCredentialsEmail({
+        user,
+        password,
+        role,
+        schoolName,
+        appBaseUrl,
+      });
+
       await sendEmail({
         email: user.email,
-        subject: `Welcome to SmartAttend - Added as ${role === 'teacher' ? 'Faculty' : 'Parent'}`,
-        message: `Dear ${user.name},\n\nWelcome to SmartAttend Rural!\n\nYou have been registered as a ${role === 'teacher' ? 'Faculty member (Teacher)' : 'Parent'} by the school administration.\n\nHere are your login credentials to access your dashboard:\nEmail: ${user.email}\nPassword: ${password}\n\nPlease log in at: ${loginUrl}\n\nThank you,\nSmartAttend Administration`,
+        subject: emailContent.subject,
+        message: emailContent.message,
+        html: emailContent.html,
+        schoolName,
       });
       if (req.user) {
         await logActivity(req.user.id, 'EMAIL_NOTIFICATION_SENT', `Welcome email sent successfully to ${role} ${user.name} (${user.email})`);
@@ -68,11 +128,11 @@ const registerUser = async (req, res, next) => {
     if (user.phone) {
       try {
         const sendSMS = require('../utils/sendSMS');
-        const loginUrl = `${process.env.CLIENT_URL || 'http://localhost:5174'}/login`;
+        const roleLabel = role === 'teacher' ? 'Faculty' : 'Parent';
         await sendSMS({
           phone: user.phone,
           countryCode: user.countryCode || '+91',
-          message: `SmartAttend Rural\n\nDear ${user.name},\n\nWelcome to SmartAttend! Your Faculty account has been created by the school administration.\n\nHere are your login credentials:\nEmail: ${user.email}\nPassword: ${password}\n\nPlease log in at: ${loginUrl}\n\nThank you,\nABC Rural School`,
+          message: `SmartAttend Rural\n\nDear ${user.name},\n\nWelcome to SmartAttend! Your ${roleLabel} account has been created by the school administration at ${schoolName}.\n\nHere are your login credentials:\nEmail: ${user.email}\nPassword: ${password}\n\nPlease log in at: ${loginUrl}\n\nThank you,\n${schoolName} | Powered by SmartAttend Rural`,
         });
         if (req.user) {
           await logActivity(req.user.id, 'SMS_NOTIFICATION_SENT', `Welcome SMS sent successfully to ${role} ${user.name} (${user.phone})`);
@@ -87,7 +147,7 @@ const registerUser = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      token: generateToken(user._id),
+      token: generateToken(user._id, user.email, user.role),
       data: {
         id: user._id,
         name: user.name,
@@ -115,12 +175,14 @@ const loginUser = async (req, res, next) => {
     // Check for user
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
+      await logActivity(null, 'FAILED_LOGIN', `Failed login attempt: Unregistered email "${email}"`, req);
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
     // Check if password matches
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
+      await logActivity(user._id, 'FAILED_LOGIN', `Failed login attempt for ${user.name} (${user.email}) - Incorrect password`, req);
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
@@ -139,7 +201,7 @@ const loginUser = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      token: generateToken(user._id),
+      token: generateToken(user._id, user.email, user.role),
       user: {
         _id: user._id,
         id: user._id,
@@ -307,6 +369,10 @@ const updateTeacher = async (req, res, next) => {
 
     await teacher.save();
 
+    if (req.user) {
+      await logActivity(req.user.id, 'UPDATE_TEACHER', `Updated details for teacher: ${teacher.name} (${teacher.email})`, req);
+    }
+
     res.status(200).json({
       success: true,
       message: 'Teacher details updated successfully',
@@ -335,6 +401,10 @@ const resetTeacherPassword = async (req, res, next) => {
     teacher.password = newPassword;
     await teacher.save();
 
+    if (req.user) {
+      await logActivity(req.user.id, 'PASSWORD_RESET_ADMIN', `Administrator reset password for teacher: ${teacher.name} (${teacher.email})`, req);
+    }
+
     res.status(200).json({
       success: true,
       message: `Password reset successfully for ${teacher.name}`,
@@ -361,6 +431,10 @@ const toggleTeacherStatus = async (req, res, next) => {
     teacher.status = newActiveState ? 'Active' : 'Deactivated';
     await teacher.save();
 
+    if (req.user) {
+      await logActivity(req.user.id, 'STATUS_CHANGE', `Changed account status to ${newActiveState ? 'Active' : 'Deactivated'} for teacher: ${teacher.name}`, req);
+    }
+
     res.status(200).json({
       success: true,
       message: `Teacher account ${newActiveState ? 'activated' : 'deactivated'} successfully`,
@@ -381,7 +455,13 @@ const deleteTeacher = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Teacher record not found' });
     }
 
+    const teacherName = teacher.name;
+    const teacherEmail = teacher.email;
     await teacher.deleteOne();
+
+    if (req.user) {
+      await logActivity(req.user.id, 'DELETE_TEACHER', `Deleted teacher account: ${teacherName} (${teacherEmail})`, req);
+    }
 
     res.status(200).json({
       success: true,
@@ -414,40 +494,24 @@ const forgotPassword = async (req, res, next) => {
 
     await user.save({ validateBeforeSave: false });
 
-    // Create reset url
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5174';
-    const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
+    // Resolve configured school name and base URL
+    const schoolName = await getSchoolName();
+    const appBaseUrl = getAppBaseUrl();
 
-    const htmlMessage = `
-    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-      <div style="background-color: #2E7D32; padding: 24px; text-align: center; color: white;">
-        <h1 style="margin: 0; font-size: 24px;">SmartAttend Rural</h1>
-        <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8;">AI-Powered Attendance Management</p>
-      </div>
-      <div style="padding: 32px; background-color: #ffffff;">
-        <h2 style="margin-top: 0; color: #1a202c; font-size: 20px;">Password Reset Request</h2>
-        <p style="color: #4a5568; font-size: 14px; line-height: 1.6;">Hello ${user.name},</p>
-        <p style="color: #4a5568; font-size: 14px; line-height: 1.6;">You are receiving this email because you (or someone else) requested a password reset for your account. Please click the button below to reset your password:</p>
-        <div style="text-align: center; margin: 32px 0;">
-          <a href="${resetUrl}" style="background-color: #2E7D32; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">Reset Password</a>
-        </div>
-        <p style="color: #718096; font-size: 12px; line-height: 1.6;">This link is valid for 10 minutes. If you did not request this reset, please ignore this email and your password will remain unchanged.</p>
-        <hr style="border: 0; border-top: 1px solid #edf2f7; margin: 24px 0;" />
-        <p style="color: #a0aec0; font-size: 11px;">If the button above does not work, copy and paste the link below into your browser:</p>
-        <p style="color: #3182ce; font-size: 11px; word-break: break-all;">${resetUrl}</p>
-      </div>
-      <div style="background-color: #f7fafc; padding: 16px; text-align: center; color: #a0aec0; font-size: 12px; border-top: 1px solid #edf2f7;">
-        © ${new Date().getFullYear()} SmartAttend Rural. All rights reserved.
-      </div>
-    </div>
-    `;
+    const emailContent = buildPasswordResetEmail({
+      user,
+      resetToken,
+      schoolName,
+      appBaseUrl,
+    });
 
     try {
       await sendEmail({
         email: user.email,
-        subject: 'SmartAttend Password Reset Request',
-        message: `You are receiving this email because you (or someone else) requested a password reset. Please use the following link to reset your password:\n\n${resetUrl}`,
-        html: htmlMessage,
+        subject: emailContent.subject,
+        message: emailContent.message,
+        html: emailContent.html,
+        schoolName,
       });
 
       await logActivity(user._id, 'EMAIL_NOTIFICATION_SENT', `Password reset email successfully sent to ${user.email}`);
@@ -624,9 +688,13 @@ const googleLogin = async (req, res, next) => {
 
     // 1. Try fetching user details via Google UserInfo API (handles access_token from Google popup)
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
       const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-        headers: { Authorization: `Bearer ${idToken}` }
+        headers: { Authorization: `Bearer ${idToken}` },
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
       if (userInfoRes.ok) {
         const userInfo = await userInfoRes.json();
         if (userInfo && userInfo.email) {
@@ -725,7 +793,7 @@ const googleLogin = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      token: generateToken(user._id),
+      token: generateToken(user._id, user.email, user.role),
       user: {
         _id: user._id,
         id: user._id,

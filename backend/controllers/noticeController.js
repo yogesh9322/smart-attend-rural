@@ -9,67 +9,22 @@ const { sendNoticeAlert } = require('../services/notificationService');
 // 1. GENERAL / COMPATIBILITY HANDLERS
 // ==============================================================================
 
-// @desc    Get notices (General / Legacy fallback)
+// @desc    Get notices (General entry point - role-enforced)
 // @route   GET /api/notices
 // @access  Private
 const getNotices = async (req, res, next) => {
-  try {
-    const { status, noticeType, category, search } = req.query;
-    let query = {};
-
-    if (status) query.status = status;
-    if (noticeType) query.noticeType = noticeType;
-    if (category) query.category = category;
-    if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { content: { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    if (req.user.role === 'teacher') {
-      const teacher = await User.findById(req.user.id);
-      const teacherClasses = await Class.find({
-        $or: [
-          { classTeacherId: req.user.id },
-          { _id: { $in: teacher?.assignedClasses || [] } }
-        ]
-      }).select('_id');
-      const classIds = teacherClasses.map(c => c._id);
-
-      query.$or = [
-        { noticeType: 'School' },
-        { createdBy: req.user.id },
-        { classId: { $in: classIds } }
-      ];
-    } else if (req.user.role === 'parent') {
-      const parent = await User.findById(req.user.id);
-      const children = await Student.find({ _id: { $in: parent?.children || [] } }).select('classId');
-      const childrenClassIds = children.map(c => c.classId).filter(Boolean);
-
-      query.status = 'Published';
-      query.$or = [
-        { noticeType: 'School' },
-        { classId: { $in: childrenClassIds } }
-      ];
-    }
-
-    const notices = await Notice.find(query)
-      .populate('createdBy', 'name role')
-      .populate('classId', 'grade section')
-      .sort({ isPinned: -1, createdAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      count: notices.length,
-      data: notices,
-    });
-  } catch (error) {
-    next(error);
+  if (req.user.role === 'admin') {
+    return getAdminNotices(req, res, next);
+  } else if (req.user.role === 'teacher') {
+    return getTeacherNotices(req, res, next);
+  } else if (req.user.role === 'parent') {
+    return getParentNotices(req, res, next);
+  } else {
+    return res.status(403).json({ success: false, message: 'Access denied: unknown role' });
   }
 };
 
-// @desc    Get single notice
+// @desc    Get single notice with strict role & class authorization
 // @route   GET /api/notices/:id
 // @access  Private
 const getNotice = async (req, res, next) => {
@@ -80,6 +35,65 @@ const getNotice = async (req, res, next) => {
 
     if (!notice) {
       return res.status(404).json({ success: false, message: 'Notice not found' });
+    }
+
+    // Role-based authorization verification on the backend
+    if (req.user.role === 'admin') {
+      // Admins are authorized for all school and class notices
+    } else if (req.user.role === 'teacher') {
+      const isCreator =
+        notice.createdBy?._id?.toString() === req.user.id ||
+        notice.createdBy?.toString() === req.user.id;
+
+      if (!isCreator) {
+        if (notice.status !== 'Published') {
+          return res.status(403).json({ success: false, message: 'Access denied to unpublished notice.' });
+        }
+
+        const isSchoolNotice =
+          (notice.noticeType === 'School' || notice.scope === 'Entire School') &&
+          ['all', 'teachers'].includes(notice.targetAudience);
+
+        if (!isSchoolNotice) {
+          const teacher = await User.findById(req.user.id);
+          const authorizedClasses = await Class.find({
+            $or: [
+              { classTeacherId: req.user.id },
+              { _id: { $in: teacher?.assignedClasses || [] } }
+            ]
+          }).select('_id');
+          const classIds = authorizedClasses.map(c => c._id.toString());
+          const noticeClassId = (notice.classId?._id || notice.classId)?.toString();
+
+          if (!classIds.includes(noticeClassId)) {
+            return res.status(403).json({ success: false, message: 'Access denied: notice not for your assigned classes.' });
+          }
+        }
+      }
+    } else if (req.user.role === 'parent') {
+      if (notice.status !== 'Published') {
+        return res.status(403).json({ success: false, message: 'Access denied to unpublished notice.' });
+      }
+
+      const isSchoolNotice =
+        (notice.noticeType === 'School' || notice.scope === 'Entire School') &&
+        ['all', 'parents'].includes(notice.targetAudience);
+
+      if (!isSchoolNotice) {
+        const parent = await User.findById(req.user.id);
+        const children = await Student.find({
+          $or: [
+            { parentId: req.user.id },
+            { _id: { $in: parent?.children || [] } }
+          ]
+        }).select('classId');
+        const classIds = children.map(c => c.classId?.toString()).filter(Boolean);
+        const noticeClassId = (notice.classId?._id || notice.classId)?.toString();
+
+        if (!classIds.includes(noticeClassId)) {
+          return res.status(403).json({ success: false, message: 'Access denied: notice not relevant to your children.' });
+        }
+      }
     }
 
     res.status(200).json({
@@ -95,22 +109,49 @@ const getNotice = async (req, res, next) => {
 // 2. ADMINISTRATOR (PRINCIPAL) HANDLERS
 // ==============================================================================
 
-// @desc    Get all notices for Admin (School & Class notices, all statuses)
+// @desc    Get all notices for Admin (School & Class notices across the school, all statuses)
 // @route   GET /api/admin/notices
 // @access  Private/Admin
 const getAdminNotices = async (req, res, next) => {
   try {
-    const { status, noticeType, search } = req.query;
-    let query = {};
+    const { status, noticeType, category, search } = req.query;
+    let andConditions = [];
 
-    if (status && status !== 'All') query.status = status;
-    if (noticeType) query.noticeType = noticeType;
-    if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { content: { $regex: search, $options: 'i' } }
-      ];
+    if (status && status !== 'All') {
+      andConditions.push({ status });
     }
+
+    if (noticeType && noticeType !== 'All') {
+      if (noticeType === 'School') {
+        andConditions.push({
+          $or: [{ noticeType: 'School' }, { scope: 'Entire School' }]
+        });
+      } else if (noticeType === 'Class') {
+        andConditions.push({
+          $or: [
+            { noticeType: 'Class' },
+            { scope: { $in: ['Assigned Class', 'All Assigned Classes'] } }
+          ]
+        });
+      }
+    }
+
+    if (category && category !== 'All') {
+      andConditions.push({ category });
+    }
+
+    if (search && search.trim()) {
+      const searchRegex = { $regex: search.trim(), $options: 'i' };
+      andConditions.push({
+        $or: [
+          { title: searchRegex },
+          { content: searchRegex },
+          { description: searchRegex }
+        ]
+      });
+    }
+
+    const query = andConditions.length > 0 ? { $and: andConditions } : {};
 
     const notices = await Notice.find(query)
       .populate('createdBy', 'name role')
@@ -124,6 +165,46 @@ const getAdminNotices = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+
+// Helper to dispatch notice notifications to target audience only, strictly excluding the publisher
+const dispatchNoticeNotifications = async (notice, senderId) => {
+  try {
+    const aud = notice.targetAudience || 'all';
+
+    // 1. Dispatch SMS / Email alert respecting target audience
+    sendNoticeAlert(notice.title, notice.content || notice.description, aud)
+      .catch((err) => console.error('Notice notification error:', err.message));
+
+    // 2. Identify target recipient accounts, EXCLUDING the publisher
+    const recipientFilter = {
+      _id: { $ne: senderId }
+    };
+
+    if (aud === 'teachers') {
+      recipientFilter.role = 'teacher';
+    } else if (aud === 'parents') {
+      recipientFilter.role = 'parent';
+    } else if (aud === 'all') {
+      recipientFilter.role = { $in: ['teacher', 'parent'] };
+    }
+
+    const targetUsers = await User.find(recipientFilter).select('_id role');
+    if (targetUsers.length > 0) {
+      const notificationsToCreate = targetUsers.map((u) => ({
+        userId: u._id,
+        senderId: senderId,
+        targetRole: u.role,
+        title: '🏫 School Notice: ' + notice.title,
+        message: `Official Announcement: "${notice.title}" has been published by the administration.`,
+        category: 'notice',
+        isRead: false,
+      }));
+      await Notification.insertMany(notificationsToCreate);
+    }
+  } catch (err) {
+    console.error('Failed to dispatch notice notifications:', err.message);
   }
 };
 
@@ -160,15 +241,7 @@ const createAdminNotice = async (req, res, next) => {
     });
 
     if (notice.status === 'Published') {
-      // Notify all teachers and parents
-      sendNoticeAlert(title, content || description, 'all')
-        .catch(err => console.error('Notice notification error:', err.message));
-
-      await Notification.create({
-        title: '🏫 School Notice: ' + title,
-        message: `Official Announcement: "${title}" has been published by the administration.`,
-        category: 'notice',
-      });
+      await dispatchNoticeNotifications(notice, req.user.id);
     }
 
     res.status(201).json({
@@ -203,14 +276,7 @@ const updateAdminNotice = async (req, res, next) => {
     });
 
     if (notice.status === 'Published' && wasDraft) {
-      sendNoticeAlert(notice.title, notice.content || notice.description, notice.targetAudience || 'all')
-        .catch(err => console.error('Notice notification error:', err.message));
-
-      await Notification.create({
-        title: '🏫 School Notice: ' + notice.title,
-        message: `Official Announcement: "${notice.title}" has been published by the administration.`,
-        category: 'notice',
-      });
+      await dispatchNoticeNotifications(notice, req.user.id);
     }
 
     res.status(200).json({
@@ -247,12 +313,12 @@ const deleteAdminNotice = async (req, res, next) => {
 // 3. TEACHER HANDLERS (Class Notices Only)
 // ==============================================================================
 
-// @desc    Get teacher's notices (for assigned classes / created by teacher)
+// @desc    Get teacher's notices (for assigned classes / created by teacher / accessible school notices)
 // @route   GET /api/teacher/notices
 // @access  Private/Teacher
 const getTeacherNotices = async (req, res, next) => {
   try {
-    const { status, search } = req.query;
+    const { status, noticeType, category, search } = req.query;
     const teacher = await User.findById(req.user.id);
     const teacherClasses = await Class.find({
       $or: [
@@ -262,23 +328,64 @@ const getTeacherNotices = async (req, res, next) => {
     }).select('_id');
     const classIds = teacherClasses.map(c => c._id);
 
-    let query = {
-      $or: [
-        { createdBy: req.user.id },
-        { noticeType: 'School', targetAudience: { $in: ['all', 'teachers'] } },
-        { classId: { $in: classIds } }
-      ]
-    };
+    // Authorized notice pools for teacher:
+    // 1. Notices created by this teacher
+    // 2. School notices published for all or teachers
+    // 3. Class notices published for teacher's assigned classes
+    const accessConditions = [
+      { createdBy: req.user.id },
+      { noticeType: 'School', targetAudience: { $in: ['all', 'teachers'] }, status: 'Published' },
+      { classId: { $in: classIds }, status: 'Published' }
+    ];
 
-    if (status && status !== 'All') query.status = status;
-    if (search) {
-      query.title = { $regex: search, $options: 'i' };
+    let andConditions = [{ $or: accessConditions }];
+
+    // Status filter: Only teacher's own notices can be seen in Draft / Scheduled / Archived states
+    if (status && status !== 'All') {
+      if (status === 'Published') {
+        andConditions.push({ status: 'Published' });
+      } else {
+        andConditions.push({ createdBy: req.user.id, status });
+      }
     }
+
+    // Notice Type filter
+    if (noticeType && noticeType !== 'All') {
+      if (noticeType === 'School') {
+        andConditions.push({
+          $or: [{ noticeType: 'School' }, { scope: 'Entire School' }]
+        });
+      } else if (noticeType === 'Class') {
+        andConditions.push({
+          $or: [
+            { noticeType: 'Class' },
+            { scope: { $in: ['Assigned Class', 'All Assigned Classes'] } }
+          ]
+        });
+      }
+    }
+
+    if (category && category !== 'All') {
+      andConditions.push({ category });
+    }
+
+    if (search && search.trim()) {
+      const searchRegex = { $regex: search.trim(), $options: 'i' };
+      andConditions.push({
+        $or: [
+          { title: searchRegex },
+          { content: searchRegex },
+          { description: searchRegex }
+        ]
+      });
+    }
+
+    const query = { $and: andConditions };
 
     const notices = await Notice.find(query)
       .populate('createdBy', 'name role')
       .populate('classId', 'grade section')
-      .sort({ createdAt: -1 });
+      .sort({ isPinned: -1, createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -356,9 +463,12 @@ const createTeacherNotice = async (req, res, next) => {
       if (parentIds.length > 0) {
         const notificationsToCreate = parentIds.map(pId => ({
           userId: pId,
+          senderId: req.user.id,
+          targetRole: 'parent',
           title: `👨‍🏫 Class Notice: ${title}`,
           message: `Class Announcement from Teacher: "${title}"`,
           category: 'notice',
+          isRead: false,
         }));
         await Notification.insertMany(notificationsToCreate);
       }
@@ -428,9 +538,12 @@ const updateTeacherNotice = async (req, res, next) => {
       if (parentIds.length > 0) {
         const notificationsToCreate = parentIds.map(pId => ({
           userId: pId,
+          senderId: req.user.id,
+          targetRole: 'parent',
           title: `👨‍🏫 Class Notice: ${notice.title}`,
           message: `Class Announcement from Teacher: "${notice.title}"`,
           category: 'notice',
+          isRead: false,
         }));
         await Notification.insertMany(notificationsToCreate);
       }
@@ -474,32 +587,101 @@ const deleteTeacherNotice = async (req, res, next) => {
 // 4. PARENT HANDLERS (School & Child's Class Notices Only)
 // ==============================================================================
 
-// @desc    Get notices for Parent (School Notices + Child's Assigned Class Notices)
+// @desc    Get notices for Parent (School Notices + Linked Children's Class Notices)
 // @route   GET /api/parent/notices
 // @access  Private/Parent
 const getParentNotices = async (req, res, next) => {
   try {
+    const { noticeType, category, search } = req.query;
     const parent = await User.findById(req.user.id);
-    const children = await Student.find({ _id: { $in: parent?.children || [] } }).select('classId');
+
+    // Find all linked children for this parent across both parentId and parent.children relations
+    const children = await Student.find({
+      $or: [
+        { parentId: req.user.id },
+        { _id: { $in: parent?.children || [] } }
+      ]
+    }).select('_id name classId rollNo');
+
     const childrenClassIds = children.map(c => c.classId).filter(Boolean);
 
-    const query = {
-      status: 'Published',
-      $or: [
-        { noticeType: 'School', targetAudience: { $in: ['all', 'parents'] } },
-        { classId: { $in: childrenClassIds } }
-      ]
-    };
+    // Parent can ONLY access Published notices intended for parents/all or their children's classes
+    const accessConditions = [
+      { noticeType: 'School', targetAudience: { $in: ['all', 'parents'] } },
+      { classId: { $in: childrenClassIds } }
+    ];
+
+    let andConditions = [
+      { status: 'Published' },
+      { $or: accessConditions }
+    ];
+
+    // Notice Type filter
+    if (noticeType && noticeType !== 'All') {
+      if (noticeType === 'School') {
+        andConditions.push({
+          $or: [{ noticeType: 'School' }, { scope: 'Entire School' }]
+        });
+      } else if (noticeType === 'Class') {
+        andConditions.push({
+          $or: [
+            { noticeType: 'Class' },
+            { scope: { $in: ['Assigned Class', 'All Assigned Classes'] } }
+          ]
+        });
+      }
+    }
+
+    if (category && category !== 'All') {
+      andConditions.push({ category });
+    }
+
+    if (search && search.trim()) {
+      const searchRegex = { $regex: search.trim(), $options: 'i' };
+      andConditions.push({
+        $or: [
+          { title: searchRegex },
+          { content: searchRegex },
+          { description: searchRegex }
+        ]
+      });
+    }
+
+    const query = { $and: andConditions };
 
     const notices = await Notice.find(query)
       .populate('createdBy', 'name role')
       .populate('classId', 'grade section')
       .sort({ isPinned: -1, createdAt: -1 });
 
+    // Attach relevant children to class notices to support parents with multiple children
+    const noticesWithChildContext = notices.map(notice => {
+      const noticeObj = notice.toObject();
+      if (notice.classId) {
+        const noticeClassIdStr = (notice.classId._id || notice.classId).toString();
+        const matchingChildren = children.filter(ch =>
+          ch.classId && ch.classId.toString() === noticeClassIdStr
+        ).map(ch => ({
+          _id: ch._id,
+          name: ch.name,
+          rollNo: ch.rollNo
+        }));
+        noticeObj.relevantChildren = matchingChildren;
+
+        const gradeStr = notice.classId.grade ? String(notice.classId.grade).replace(/^grade\s+/i, '') : '';
+        const secStr = notice.classId.section ? `-${notice.classId.section}` : '';
+        noticeObj.relevantClassLabel = gradeStr ? `Grade ${gradeStr}${secStr}` : 'Class Notice';
+      } else {
+        noticeObj.relevantChildren = [];
+        noticeObj.relevantClassLabel = 'Entire School';
+      }
+      return noticeObj;
+    });
+
     res.status(200).json({
       success: true,
-      count: notices.length,
-      data: notices,
+      count: noticesWithChildContext.length,
+      data: noticesWithChildContext,
     });
   } catch (error) {
     next(error);

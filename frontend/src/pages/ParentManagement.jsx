@@ -8,6 +8,7 @@ import {
   FaSpinner,
   FaEllipsisV,
   FaEye,
+  FaEyeSlash,
   FaEdit,
   FaKey,
   FaPowerOff,
@@ -61,6 +62,8 @@ const ParentManagement = () => {
   const [selectedStudentId, setSelectedStudentId] = useState('');
   // Reset Password Field
   const [newPassword, setNewPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
 
   // Close dropdown menu when clicking outside
   useEffect(() => {
@@ -134,18 +137,27 @@ const ParentManagement = () => {
   }, [successMsg, error]);
 
   // Open Add Modal
-  const openAddModal = () => {
+  const openAddModal = useCallback(() => {
     setSelectedParent(null);
     setName('');
     setEmail('');
     setPassword('');
+    setShowPassword(false);
     setPhone('');
     setOccupation('');
     setVillage('');
     setAddress('');
     setError('');
     setIsAddModalOpen(true);
-  };
+  }, []);
+
+  // Auto-open Add modal if navigated with ?action=add
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'add') {
+      openAddModal();
+    }
+  }, [openAddModal]);
 
   // Open Edit Modal
   const openEditModal = (p) => {
@@ -181,6 +193,7 @@ const ParentManagement = () => {
   const openResetPasswordModal = (p) => {
     setSelectedParent(p);
     setNewPassword('');
+    setShowResetPassword(false);
     setError('');
     setActiveMenuId(null);
     setIsResetPasswordModalOpen(true);
@@ -211,7 +224,8 @@ const ParentManagement = () => {
         throw new Error(data.message || 'Action failed.');
       }
     } catch (err) {
-      setError(err.message || 'Error processing request.');
+      const serverMsg = err.response?.data?.message || err.message || 'Error processing request.';
+      setError(serverMsg);
     } finally {
       setFormLoading(false);
     }
@@ -242,7 +256,8 @@ const ParentManagement = () => {
         throw new Error(data.message || 'Update failed.');
       }
     } catch (err) {
-      setError(err.message || 'Error updating profile.');
+      const serverMsg = err.response?.data?.message || err.message || 'Error updating profile.';
+      setError(serverMsg);
     } finally {
       setFormLoading(false);
     }
@@ -776,14 +791,25 @@ const ParentManagement = () => {
                 </div>
                 <div>
                   <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">Password *</label>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white font-semibold"
-                    placeholder="Min 6 characters"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-3 py-2 pr-10 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white font-semibold"
+                      placeholder="Min 6 characters"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none cursor-pointer"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1131,15 +1157,26 @@ const ParentManagement = () => {
             <form onSubmit={handleResetPasswordSubmit} className="p-6 space-y-4 text-xs">
               <div>
                 <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">New Password *</label>
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white font-semibold"
-                  placeholder="Enter new password (min 6 characters)"
-                />
+                <div className="relative">
+                  <input
+                    type={showResetPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full px-3.5 py-2.5 pr-10 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white font-semibold"
+                    placeholder="Enter new password (min 6 characters)"
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => setShowResetPassword(!showResetPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none cursor-pointer"
+                    aria-label={showResetPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showResetPassword ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-200 dark:border-gray-700">

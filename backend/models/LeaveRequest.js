@@ -36,6 +36,9 @@ const LeaveRequestSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
   },
+  approvedAt: {
+    type: Date,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

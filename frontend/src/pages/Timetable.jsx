@@ -17,12 +17,15 @@ import {
 } from 'react-icons/fa';
 
 const Timetable = () => {
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
   const { user } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [assignedClasses, setAssignedClasses] = useState([]);
   const [markedClassIds, setMarkedClassIds] = useState(new Set());
+
+  const isHi = i18n.language === 'hi';
+  const isMr = i18n.language === 'mr';
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -149,7 +152,7 @@ const Timetable = () => {
     // Free Period slot
     return {
       ...slot,
-      subject: t('calendar_schedules.freePeriod') || 'Free Period',
+      subject: isMr ? 'फ्री तासीका' : isHi ? 'खाली अवधि' : (t('calendar_schedules.freePeriod') || 'Free Period'),
       isFreePeriod: true
     };
   });
@@ -192,7 +195,7 @@ const Timetable = () => {
             {t('nav.timetable')}
           </h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">
-            {t('nav.timetable') === 'समय सारणी' ? 'शिक्षक कार्यक्रम' : 'Teacher schedule for'} <strong className="text-gray-800 dark:text-gray-200">{user?.name || 'Teacher'}</strong>
+            {isMr ? 'शिक्षक वेळापत्रक:' : isHi ? 'शिक्षक कार्यक्रम:' : 'Teacher schedule for'} <strong className="text-gray-800 dark:text-gray-200">{user?.name || 'Teacher'}</strong>
           </p>
         </div>
 
@@ -202,17 +205,17 @@ const Timetable = () => {
             <FaClock />
           </div>
           <div>
-            <span className="text-[10px] font-bold text-gray-400 uppercase block">{t('nav.timetable') === 'समय सारणी' ? 'वर्तमान अवधि' : 'Current Period'}</span>
+            <span className="text-[10px] font-bold text-gray-400 uppercase block">{isMr ? 'सध्याचा तास' : isHi ? 'वर्तमान अवधि' : 'Current Period'}</span>
             <span className="text-xs font-bold text-gray-900 dark:text-white block mt-0.5">
               {isWeekend
-                ? t('nav.timetable') === 'समय सारणी' ? 'रविवार • स्कूल बंद' : 'Sunday • School Closed'
+                ? (isMr ? 'रविवार • शाळा बंद' : isHi ? 'रविवार • स्कूल बंद' : 'Sunday • School Closed')
                 : activeItem
                 ? activeItem.isBreak
                   ? activeItem.subject
                   : activeItem.isFreePeriod
-                  ? 'Free Period'
+                  ? (isMr ? 'फ्री तासीका' : isHi ? 'खाली अवधि' : 'Free Period')
                   : `${activeItem.period}: ${activeItem.subject} (${activeItem.grade})`
-                : t('nav.timetable') === 'समय सारणी' ? 'कोई सक्रिय कक्षा अवधि नहीं' : 'No Active Class Period'}
+                : (isMr ? 'सध्या कोणताही तास सुरू नाही' : isHi ? 'कोई सक्रिय कक्षा अवधि नहीं' : 'No Active Class Period')}
             </span>
           </div>
         </div>
@@ -225,9 +228,9 @@ const Timetable = () => {
             <FaChalkboard />
           </div>
           <div>
-            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">{t('nav.timetable') === 'समय सारणी' ? 'आज की कुल कक्षाएं' : 'Total Classes Today'}</span>
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">{isMr ? 'आजचे एकूण तास' : isHi ? 'आज की कुल कक्षाएं' : 'Total Classes Today'}</span>
             <span className="text-lg font-extrabold text-gray-900 dark:text-white block mt-0.5">
-              {isWeekend ? '0' : `${teachingPeriods.length} ${t('nav.timetable') === 'समय सारणी' ? 'सौंपी गई' : 'Assigned'}`}
+              {isWeekend ? '0' : `${teachingPeriods.length} ${isMr ? 'नियुक्त' : isHi ? 'सौंपी गई' : 'Assigned'}`}
             </span>
           </div>
         </div>
@@ -237,9 +240,9 @@ const Timetable = () => {
             <FaCheckCircle />
           </div>
           <div>
-            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">{t('nav.timetable') === 'समय सारणी' ? 'पूरी हुई कक्षाएं' : 'Completed Classes'}</span>
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">{isMr ? 'पूर्ण झालेले तास' : isHi ? 'पूरी हुई कक्षाएं' : 'Completed Classes'}</span>
             <span className="text-lg font-extrabold text-gray-900 dark:text-white block mt-0.5">
-              `${completedClasses} ${t('nav.timetable') === 'समय सारणी' ? 'पूर्ण' : 'Completed'}`
+              {isWeekend ? '0' : `${completedClasses} ${isMr ? 'पूर्ण' : isHi ? 'पूर्ण' : 'Completed'}`}
             </span>
           </div>
         </div>
@@ -249,9 +252,9 @@ const Timetable = () => {
             <FaHourglassHalf />
           </div>
           <div>
-            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">{t('nav.timetable') === 'समय सारणी' ? 'शेष कक्षाएं' : 'Remaining Classes'}</span>
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">{isMr ? 'उरलेले तास' : isHi ? 'शेष कक्षाएं' : 'Remaining Classes'}</span>
             <span className="text-lg font-extrabold text-gray-900 dark:text-white block mt-0.5">
-              `${remainingClasses} ${t('nav.timetable') === 'समय सारणी' ? 'शेष' : 'Remaining'}`
+              {isWeekend ? '0' : `${remainingClasses} ${isMr ? 'बाकी' : isHi ? 'शेष' : 'Remaining'}`}
             </span>
           </div>
         </div>
@@ -270,12 +273,12 @@ const Timetable = () => {
             <FaCalendarCheck />
           </div>
           <h3 className="text-base font-bold text-gray-900 dark:text-white">
-            {t('nav.timetable') === 'समय सारणी' ? 'आज आपकी कोई निर्धारित कक्षा नहीं है।' : 'You have no scheduled classes today.'}
+            {isMr ? 'आज तुमच्यासाठी कोणताही तास नियोजित नाही.' : isHi ? 'आज आपकी कोई निर्धारित कक्षा नहीं है।' : 'You have no scheduled classes today.'}
           </h3>
           <p className="text-xs text-gray-400 max-w-sm mx-auto font-medium">
             {isWeekend
-              ? (t('nav.timetable') === 'समय सारणी' ? 'सप्ताहांत का आनंद लें! रविवार को स्कूल बंद रहता है।' : 'Enjoy your weekend! School is closed on Sundays.')
-              : (t('nav.timetable') === 'समय सारणी' ? 'आज आपके लिए कोई निर्धारित कक्षा अवधि नहीं है।' : 'You have no assigned class periods scheduled for today.')}
+              ? (isMr ? 'रविवारच्या सुट्टीचा आनंद घ्या! रविवारी शाळा बंद असते.' : isHi ? 'सप्ताहांत का आनंद लें! रविवार को स्कूल बंद रहता है।' : 'Enjoy your weekend! School is closed on Sundays.')
+              : (isMr ? 'आज तुमच्यासाठी कोणतेही तास नियुक्त केलेले नाहीत.' : isHi ? 'आज आपके लिए कोई निर्धारित कक्षा अवधि नहीं है।' : 'You have no assigned class periods scheduled for today.')}
           </p>
         </div>
       ) : (
@@ -299,7 +302,7 @@ const Timetable = () => {
                       {item.timeStart} - {item.timeEnd}
                     </span>
                     <span className="text-xs font-bold text-gray-800 dark:text-gray-200">
-                      {item.breakType === 'lunch' ? (t('nav.timetable') === 'समय सारणी' ? 'लंच ब्रेक' : 'Lunch Break') : (t('nav.timetable') === 'समय सारणी' ? 'मध्यांतर' : 'Recess')}
+                      {item.breakType === 'lunch' ? (isMr ? 'जेवणाची सुट्टी' : isHi ? 'लंच ब्रेक' : 'Lunch Break') : (isMr ? 'मध्यांतर' : isHi ? 'मध्यांतर' : 'Recess')}
                     </span>
                   </div>
                   <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 uppercase tracking-wider">
@@ -318,15 +321,15 @@ const Timetable = () => {
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-28 border-r border-gray-200 dark:border-gray-700 pr-3">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase block">{t('nav.timetable') === 'समय सारणी' ? 'अवधि' : 'Period'} {item.period.slice(-1)}</span>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase block">{isMr ? 'तास' : isHi ? 'अवधि' : 'Period'} {item.period.slice(-1)}</span>
                       <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300 block">{item.timeStart} - {item.timeEnd}</span>
                     </div>
                     <span className="text-xs font-bold text-gray-600 dark:text-gray-400">
-                      Free Period
+                      {isMr ? 'फ्री तासीका' : isHi ? 'खाली अवधि' : 'Free Period'}
                     </span>
                   </div>
                   <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Free Period
+                    {isMr ? 'फ्री तासीका' : isHi ? 'खाली अवधि' : 'Free Period'}
                   </span>
                 </div>
               );
@@ -346,7 +349,7 @@ const Timetable = () => {
                 <div className="flex items-center gap-4">
                   <div className="w-28 border-r border-gray-200 dark:border-gray-700 pr-3">
                     <span className="text-[10px] font-bold text-gray-400 uppercase block">
-                      {t('nav.timetable') === 'समय सारणी' ? 'अवधि' : 'Period'} {item.period.slice(-1)}
+                      {isMr ? 'तास' : isHi ? 'अवधि' : 'Period'} {item.period.slice(-1)}
                     </span>
                     <span className="text-xs font-extrabold text-gray-900 dark:text-white block mt-0.5">
                       {item.timeStart} - {item.timeEnd}
@@ -381,7 +384,7 @@ const Timetable = () => {
                         : 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800'
                     }`}
                   >
-                    {isActive ? (t('nav.timetable') === 'समय सारणी' ? 'वर्तमान कक्षा' : 'Current Class') : isCompleted ? (t('nav.timetable') === 'समय सारणी' ? 'पूर्ण' : 'Completed') : (t('nav.timetable') === 'समय सारणी' ? 'आगामी' : 'Upcoming')}
+                    {isActive ? (isMr ? 'सध्याचा तास' : isHi ? 'वर्तमान कक्षा' : 'Current Class') : isCompleted ? (isMr ? 'पूर्ण' : isHi ? 'पूर्ण' : 'Completed') : (isMr ? 'पुढील तास' : isHi ? 'आगामी' : 'Upcoming')}
                   </span>
 
                   {/* Context-Aware Action Button for Active / Current Class */}
@@ -392,7 +395,7 @@ const Timetable = () => {
                         className="px-3.5 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
                       >
                         <FaEye className="text-xs" />
-                        <span>{t('nav.timetable') === 'समय सारणी' ? 'उपस्थिति देखें' : 'View Attendance'}</span>
+                        <span>{isMr ? 'उपस्थिती पहा' : isHi ? 'उपस्थिति देखें' : 'View Attendance'}</span>
                       </Link>
                     ) : (
                       <Link
@@ -400,7 +403,7 @@ const Timetable = () => {
                         className="px-3.5 py-1.5 bg-[#2E7D32] hover:bg-[#1B5E20] text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
                       >
                         <FaCalendarCheck className="text-xs" />
-                        <span>{t('nav.timetable') === 'समय सारणी' ? 'उपस्थिति दर्ज करें' : 'Take Attendance'}</span>
+                        <span>{isMr ? 'उपस्थिती नोंदवा' : isHi ? 'उपस्थिति दर्ज करें' : 'Take Attendance'}</span>
                       </Link>
                     )
                   )}

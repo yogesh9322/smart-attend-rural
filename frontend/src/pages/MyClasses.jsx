@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { getClasses, getStudents, getDashboardStats } from '../services/api';
 import { hasOfflineAttendance } from '../services/db';
 import { FaGraduationCap, FaCalendarCheck, FaFolderOpen, FaSpinner, FaChalkboard, FaClock, FaUsers } from 'react-icons/fa';
 
 const MyClasses = () => {
+  const { t } = useTranslation();
   const [classes, setClasses] = useState([]);
   const [studentCounts, setStudentCounts] = useState({});
   const [attendanceStatus, setAttendanceStatus] = useState({});
@@ -37,6 +39,10 @@ const MyClasses = () => {
           const statusMap = {};
           const timeMap = {};
 
+          const timezone = statsRes.data?.schoolTimezone || 'Asia/Kolkata';
+          const todayDate = statsRes.data?.schoolLocalDate || new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+          const todayClasses = statsRes.data?.todayClasses || [];
+
           for (const cls of fetchedClasses) {
             // Fetch student count for this class standard
             const studentsRes = await getStudents({ classId: cls._id });
@@ -45,19 +51,17 @@ const MyClasses = () => {
             }
 
             // Check if there is an offline cached record first
-            const hasLocal = await hasOfflineAttendance(cls._id, today);
+            const hasLocal = await hasOfflineAttendance(cls._id, todayDate);
             if (hasLocal) {
               statusMap[cls._id] = 'Cached (Pending)';
-              timeMap[cls._id] = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              timeMap[cls._id] = new Intl.DateTimeFormat('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: true }).format(new Date());
             } else {
-              // Check if marked in stats
-              const className = `${cls.grade}-${cls.section}`;
-              const matchedClass = statsRes.data?.classWise?.find(cw => cw.className === className);
-              if (matchedClass && matchedClass.present + matchedClass.absent > 0) {
-                statusMap[cls._id] = 'Marked';
-                timeMap[cls._id] = matchedClass.lastUpdated
-                  ? new Date(matchedClass.lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                  : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const matchedToday = todayClasses.find(
+                (tc) => String(tc.classId) === String(cls._id)
+              );
+              if (matchedToday) {
+                statusMap[cls._id] = matchedToday.status;
+                timeMap[cls._id] = matchedToday.lastUpdatedTime || null;
               } else {
                 statusMap[cls._id] = 'Pending';
                 timeMap[cls._id] = null;
@@ -93,9 +97,9 @@ const MyClasses = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">My Assigned Classes</h2>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t('my_classes.title')}</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-            Monitor and record student attendance registers.
+            {t('my_classes.subtitle')}
           </p>
         </div>
       </div>
@@ -109,10 +113,7 @@ const MyClasses = () => {
       {classes.length === 0 ? (
         <div className="text-center py-16 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-3xl shadow-sm">
           <FaChalkboard className="mx-auto text-5xl text-gray-300 dark:text-gray-600 mb-4 animate-pulse" />
-          <h3 className="text-lg font-bold text-gray-700 dark:text-white">No Classes Assigned</h3>
-          <p className="text-sm text-gray-400 mt-1">
-            Please ask the central office administrator to assign classes to your profile.
-          </p>
+          <h3 className="text-lg font-bold text-gray-700 dark:text-white">{t('my_classes.noClassesAssigned')}</h3>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -133,16 +134,24 @@ const MyClasses = () => {
                       className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
                         status === 'Marked'
                           ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-950/40 dark:text-green-300'
+                          : status === 'Partially Marked'
+                          ? 'bg-amber-50 border-amber-250 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
                           : status === 'Cached (Pending)'
                           ? 'bg-amber-50 border-amber-250 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+                          : status === 'Not Scheduled'
+                          ? 'bg-gray-100 border-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
                           : 'bg-red-50 border-red-150 text-red-700 dark:bg-red-950/40 dark:text-red-300'
                       }`}
                     >
                       {status === 'Marked'
-                        ? '🟢 Attendance Marked'
+                        ? `🟢 ${t('teacher_dashboard.marked', 'Marked')}`
+                        : status === 'Partially Marked'
+                        ? `🟠 ${t('teacher_dashboard.partiallyMarked', 'Partially Marked')}`
                         : status === 'Cached (Pending)'
-                        ? '🟡 Attendance Cached (Pending Sync)'
-                        : '🔴 Attendance Pending'}
+                        ? `🟡 ${t('teacher_dashboard.cachedPending', 'Cached (Pending)')}`
+                        : status === 'Not Scheduled'
+                        ? `⚪ ${t('teacher_dashboard.notScheduled', 'Not Scheduled')}`
+                        : `🔴 ${t('teacher_dashboard.pending', 'Pending')}`}
                     </span>
                   </div>
 
@@ -156,7 +165,7 @@ const MyClasses = () => {
                     <div className="flex items-center gap-2">
                       <FaGraduationCap className="text-gray-400 text-sm" />
                       <span>
-                        <strong className="text-gray-800 dark:text-gray-200">{studentCounts[cls._id] ?? '...'}</strong> registered students
+                        <strong className="text-gray-800 dark:text-gray-200">{studentCounts[cls._id] ?? '...'}</strong> {t('dashboard.totalStudents')}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 font-medium pt-1">
@@ -170,7 +179,7 @@ const MyClasses = () => {
                         <strong className="text-gray-800 dark:text-gray-200">
                           {lastUpdatedMap[cls._id]
                             ? `Today • ${lastUpdatedMap[cls._id]}`
-                            : `Today • ${currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                            : t('teacher_dashboard.notMarkedToday', 'Not marked today')}
                         </strong>
                       </span>
                     </div>
