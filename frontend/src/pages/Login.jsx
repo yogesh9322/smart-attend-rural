@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useGoogleLogin } from '@react-oauth/google';
-import { FaSchool, FaLock, FaEnvelope, FaSpinner } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
+import { FaSchool, FaLock, FaEnvelope, FaSpinner, FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5 mr-3 shrink-0" viewBox="0 0 24 24">
@@ -26,8 +27,10 @@ const GoogleIcon = () => (
 );
 
 const Login = () => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const { loginUser, loginWithGoogle, isAuthenticated, loading: authLoading, error: authError } = useAuth();
   const [localLoading, setLocalLoading] = useState(false);
@@ -107,7 +110,11 @@ const Login = () => {
     onSuccess: handleGoogleSuccess,
     onError: (errorResponse) => {
       console.warn('Google Sign-In Error:', errorResponse);
-      setError('Google Sign-In requires a valid Client ID from Google Cloud Console. Please add your GOOGLE_CLIENT_ID to .env.');
+      setError('Google Sign-In was cancelled or failed.');
+      setGoogleLoading(false);
+    },
+    onNonOAuthError: (nonOAuthError) => {
+      console.warn('Google Sign-In Non-OAuth Error:', nonOAuthError);
       setGoogleLoading(false);
     },
   });
@@ -124,10 +131,10 @@ const Login = () => {
               <FaSchool className="text-3xl" />
             </div>
             <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-              SmartAttend Rural
+              {t('login.title')}
             </h2>
             <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 font-medium">
-              AI-Powered Attendance Management for Rural Schools
+              {t('login.subtitle')}
             </p>
           </div>
 
@@ -151,7 +158,7 @@ const Login = () => {
                 {/* Email Input */}
                 <div>
                   <label htmlFor="email" className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Email Address
+                    {t('login.emailLabel')}
                   </label>
                   <div className="mt-1 relative rounded-lg shadow-sm">
                     <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
@@ -166,7 +173,7 @@ const Login = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 dark:text-white dark:bg-gray-700 placeholder-gray-400 sm:text-sm font-medium"
-                      placeholder="Enter school email"
+                      placeholder={t('login.emailPlaceholder')}
                     />
                   </div>
                 </div>
@@ -174,7 +181,7 @@ const Login = () => {
                 {/* Password Input */}
                 <div>
                   <label htmlFor="password" className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Password
+                    {t('login.passwordLabel')}
                   </label>
                   <div className="mt-1 relative rounded-lg shadow-sm">
                     <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
@@ -183,14 +190,27 @@ const Login = () => {
                     <input
                       id="password"
                       name="password"
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       autoComplete="current-password"
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 dark:text-white dark:bg-gray-700 placeholder-gray-400 sm:text-sm font-medium"
-                      placeholder="Enter secret password"
+                      className="block w-full pl-10 pr-10 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 dark:text-white dark:bg-gray-700 placeholder-gray-400 sm:text-sm font-medium"
+                      placeholder={t('login.passwordPlaceholder')}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none cursor-pointer transition-colors"
+                      tabIndex="-1"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? (
+                        <FaEyeSlash className="text-base text-gray-500 hover:text-gray-700 dark:text-gray-300" />
+                      ) : (
+                        <FaEye className="text-base text-gray-400 hover:text-gray-600 dark:text-gray-300" />
+                      )}
+                    </button>
                   </div>
                 </div>
 
@@ -206,7 +226,7 @@ const Login = () => {
                       className="w-4.5 h-4.5 text-primary border-gray-300 rounded focus:ring-primary"
                     />
                     <label htmlFor="remember-me" className="ml-2 block text-xs font-semibold text-gray-700 dark:text-gray-300">
-                      Remember Me
+                      {t('login.rememberMe')}
                     </label>
                   </div>
 
@@ -216,7 +236,7 @@ const Login = () => {
                       className="text-secondary hover:text-secondary-dark cursor-pointer" 
                       onClick={(e) => { e.preventDefault(); navigate('/forgot-password'); }}
                     >
-                      Forgot password?
+                      {t('login.forgotPassword')}
                     </a>
                   </div>
                 </div>
@@ -231,10 +251,10 @@ const Login = () => {
                     {localLoading ? (
                       <span className="flex items-center gap-2">
                         <FaSpinner className="animate-spin text-lg" />
-                        <span>Logging in...</span>
+                        <span>{t('login.signingIn')}</span>
                       </span>
                     ) : (
-                      'Sign In'
+                      t('login.signIn')
                     )}
                   </button>
                 </div>
@@ -245,7 +265,7 @@ const Login = () => {
                     <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
                   </div>
                   <div className="relative flex justify-center text-xs font-semibold uppercase">
-                    <span className="bg-white dark:bg-gray-800 px-3 text-gray-400">Or continue with</span>
+                    <span className="bg-white dark:bg-gray-800 px-3 text-gray-400">{t('login.orContinueWith')}</span>
                   </div>
                 </div>
 
@@ -263,12 +283,12 @@ const Login = () => {
                     {googleLoading ? (
                       <span className="flex items-center gap-2">
                         <FaSpinner className="animate-spin text-lg text-primary" />
-                        <span>Signing in with Google...</span>
+                        <span>{t('login.signingInGoogle')}</span>
                       </span>
                     ) : (
                       <>
                         <GoogleIcon />
-                        <span>Continue with Google</span>
+                        <span>{t('login.continueWithGoogle')}</span>
                       </>
                     )}
                   </button>

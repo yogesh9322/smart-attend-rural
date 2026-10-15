@@ -65,19 +65,26 @@ const Notices = () => {
     }
   }, [isTeacher]);
 
-  // Fetch notices from backend
+  // Fetch notices dynamically from backend with role-enforced queries
   const fetchNoticesList = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      let res;
+      const params = {
+        search: searchQuery.trim() || undefined,
+        noticeType: filterType === 'All' ? undefined : filterType,
+      };
 
+      let res;
       if (isAdmin) {
-        res = await getAdminNotices({ status: statusFilter === 'All' ? '' : statusFilter, search: searchQuery });
+        params.status = statusFilter === 'All' ? '' : statusFilter;
+        res = await getAdminNotices(params);
       } else if (isTeacher) {
-        res = await getTeacherNotices({ status: statusFilter === 'All' ? '' : statusFilter, search: searchQuery });
+        params.status = statusFilter === 'All' ? '' : statusFilter;
+        res = await getTeacherNotices(params);
       } else {
-        res = await getParentNotices();
+        // Parent role: backend strictly enforces published notices only for parent's linked children
+        res = await getParentNotices(params);
       }
 
       if (res && res.success) {
@@ -89,13 +96,13 @@ const Notices = () => {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, isTeacher, statusFilter, searchQuery]);
+  }, [isAdmin, isTeacher, isParent, statusFilter, searchQuery, filterType]);
 
   useEffect(() => {
     fetchNoticesList();
   }, [fetchNoticesList]);
 
-  // Filtered list client-side based on filterType
+  // Client-side filter fallback ensuring instant responsive filtering
   const filteredNotices = useMemo(() => {
     return notices.filter(n => {
       const matchesSearch = !searchQuery.trim() || 
@@ -108,7 +115,12 @@ const Notices = () => {
         return n.noticeType === 'School' || n.scope === 'Entire School';
       }
       if (filterType === 'Class') {
-        return n.noticeType === 'Class' || n.scope === 'Assigned Class';
+        return (
+          n.noticeType === 'Class' ||
+          n.scope === 'Assigned Class' ||
+          n.scope === 'All Assigned Classes' ||
+          Boolean(n.classId)
+        );
       }
 
       return true;
@@ -237,6 +249,14 @@ const Notices = () => {
     }
   };
 
+  // Helper to format class label nicely
+  const formatClassLabel = (cls) => {
+    if (!cls) return t('notices.classNotice', { defaultValue: 'Class Notice' });
+    const cleanGrade = cls.grade ? String(cls.grade).replace(/^grade\s+/i, '').trim() : '';
+    const section = cls.section ? `-${cls.section}` : '';
+    return cleanGrade ? `Grade ${cleanGrade}${section}` : t('notices.classNotice', { defaultValue: 'Class Notice' });
+  };
+
   // Get Icon based on Category
   const getCategoryIcon = (cat, noticeType) => {
     if (cat === 'Holiday' || cat === 'Event') return <FaCalendarAlt className="text-purple-600 dark:text-purple-400" />;
@@ -253,7 +273,7 @@ const Notices = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {isAdmin ? t('notices.schoolNotices') : isTeacher ? t('notices.classNotices') : t('nav.notices')}
+            {t('notices.title', { defaultValue: 'Notice Board' })}
           </h2>
           <p className="text-xs text-gray-500 dark:text-gray-300 font-medium mt-1">
             {t('notices.subtitle')}
@@ -266,7 +286,7 @@ const Notices = () => {
             className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#2E7D32] hover:bg-[#1B5E20] text-white text-xs font-bold rounded-xl shadow-sm transition cursor-pointer self-start sm:self-auto"
           >
             <FaPlus />
-            <span>{isAdmin ? t('notices.createSchoolNotice') : t('notices.createClassNotice')}</span>
+            <span>{isAdmin ? t('notices.publish', { defaultValue: 'Publish Notice' }) : t('notices.createClassNotice')}</span>
           </button>
         )}
       </div>
@@ -337,12 +357,36 @@ const Notices = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredNotices.map((n) => {
             const isSchoolNotice = n.noticeType === 'School' || n.scope === 'Entire School';
-            const canEdit = isAdmin || (isTeacher && n.createdBy?._id === user?.id);
+            const canEdit = isAdmin || (isTeacher && String(n.createdBy?._id || n.createdBy) === String(user?._id || user?.id));
+
+            // Class Label Formatting
+            const classLabel = n.classId
+              ? formatClassLabel(n.classId)
+              : n.scope === 'All Assigned Classes'
+              ? t('classes.allClasses', { defaultValue: 'All Classes' })
+              : t('notices.classNotice', { defaultValue: 'Class Notice' });
+
+            // Contextual Child Info for Parent with multiple children
+            let relevantChildrenNames = '';
+            if (isParent) {
+              if (n.relevantChildren && n.relevantChildren.length > 0) {
+                relevantChildrenNames = n.relevantChildren.map(c => c.name).join(', ');
+              } else if (n.classId) {
+                const noticeClassId = (n.classId?._id || n.classId)?.toString();
+                const matches = (user?.children || []).filter(c => {
+                  const cClassId = (c.classId?._id || c.classId)?.toString();
+                  return cClassId && noticeClassId && cClassId === noticeClassId;
+                });
+                if (matches.length > 0) {
+                  relevantChildrenNames = matches.map(c => c.name).join(', ');
+                }
+              }
+            }
 
             // Audience Tag Text
             const audienceText = isSchoolNotice
-              ? (n.targetAudience === 'teachers' ? 'Teachers Only' : n.targetAudience === 'parents' ? 'Parents Only' : 'Entire School')
-              : (n.scope === 'All Assigned Classes' ? 'All Classes' : (n.classId ? `${n.classId.grade}-${n.classId.section}` : 'Class Notice'));
+              ? (n.targetAudience === 'teachers' ? t('notices.teachersOnly', { defaultValue: 'Teachers Only' }) : n.targetAudience === 'parents' ? t('notices.parentsOnly', { defaultValue: 'Parents Only' }) : t('notices.entireSchool', { defaultValue: 'Entire School' }))
+              : classLabel;
 
             const formattedDate = new Date(n.createdAt || n.publishDate).toLocaleDateString(undefined, {
               month: 'short',
@@ -390,6 +434,14 @@ const Notices = () => {
                       <span className="text-gray-400">{t('notices.audience')}:</span>
                       <span className="font-semibold text-gray-800 dark:text-gray-200">{audienceText}</span>
                     </div>
+                    {relevantChildrenNames && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-400">{t('parent_dashboard.child', { defaultValue: 'Relevant Child' })}:</span>
+                        <span className="font-semibold text-emerald-700 dark:text-emerald-400 truncate max-w-[180px]">
+                          {relevantChildrenNames}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between">
                       <span className="text-gray-400">{t('notices.publishedBy')}:</span>
                       <span className="font-semibold text-gray-800 dark:text-gray-200">{n.createdBy?.name || 'School Office'}</span>
@@ -451,9 +503,31 @@ const Notices = () => {
       {/* 4. View Notice Modal (Centered Modal on Desktop / Full Screen on Mobile) */}
       {viewNotice && (() => {
         const isSchoolNotice = viewNotice.noticeType === 'School' || viewNotice.scope === 'Entire School';
+        const classLabel = viewNotice.classId
+          ? formatClassLabel(viewNotice.classId)
+          : viewNotice.scope === 'All Assigned Classes'
+          ? t('classes.allClasses', { defaultValue: 'All Classes' })
+          : t('notices.classNotice', { defaultValue: 'Class Notice' });
+
+        let relevantChildrenNames = '';
+        if (isParent) {
+          if (viewNotice.relevantChildren && viewNotice.relevantChildren.length > 0) {
+            relevantChildrenNames = viewNotice.relevantChildren.map(c => c.name).join(', ');
+          } else if (viewNotice.classId) {
+            const noticeClassId = (viewNotice.classId?._id || viewNotice.classId)?.toString();
+            const matches = (user?.children || []).filter(c => {
+              const cClassId = (c.classId?._id || c.classId)?.toString();
+              return cClassId && noticeClassId && cClassId === noticeClassId;
+            });
+            if (matches.length > 0) {
+              relevantChildrenNames = matches.map(c => c.name).join(', ');
+            }
+          }
+        }
+
         const audienceText = isSchoolNotice
-          ? (viewNotice.targetAudience === 'teachers' ? 'Teachers Only' : viewNotice.targetAudience === 'parents' ? 'Parents Only' : 'Entire School')
-          : (viewNotice.scope === 'All Assigned Classes' ? 'All Classes' : (viewNotice.classId ? `${viewNotice.classId.grade}-${viewNotice.classId.section}` : 'Class Notice'));
+          ? (viewNotice.targetAudience === 'teachers' ? t('notices.teachersOnly', { defaultValue: 'Teachers Only' }) : viewNotice.targetAudience === 'parents' ? t('notices.parentsOnly', { defaultValue: 'Parents Only' }) : t('notices.entireSchool', { defaultValue: 'Entire School' }))
+          : classLabel;
 
         const formattedDate = new Date(viewNotice.createdAt || viewNotice.publishDate).toLocaleDateString(undefined, {
           month: 'long',
@@ -502,6 +576,12 @@ const Notices = () => {
                     <span className="block text-[10px] font-bold text-gray-400 uppercase">{t('notices.publishedBy')}</span>
                     <span className="font-bold text-gray-900 dark:text-white text-xs mt-0.5 block">{viewNotice.createdBy?.name || 'School Administration'}</span>
                   </div>
+                  {relevantChildrenNames && (
+                    <div className="col-span-2 border-t border-gray-200 dark:border-gray-700 pt-2 flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase">{t('parent_dashboard.child', { defaultValue: 'Relevant Child' })}</span>
+                      <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs">{relevantChildrenNames} ({classLabel})</span>
+                    </div>
+                  )}
                   <div className="col-span-2 border-t border-gray-200 dark:border-gray-700 pt-2 flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400">
                     <span>{t('reports.date')}: <strong className="text-gray-800 dark:text-gray-200">{formattedDate}</strong></span>
                     <span>{t('reports.time') || 'Time'}: <strong className="text-gray-800 dark:text-gray-200">{formattedTime}</strong></span>

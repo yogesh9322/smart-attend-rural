@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { parseLeaveDocumentOCR } from '../../services/api';
 import { FaUpload, FaRobot, FaSpinner, FaRegCheckCircle, FaExclamationTriangle } from 'react-icons/fa';
 
 const AIOCRLeaveUpload = ({ onExtracted }) => {
+  const { t } = useTranslation();
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -31,11 +33,11 @@ const AIOCRLeaveUpload = ({ onExtracted }) => {
           onExtracted(res.data);
         }
       } else {
-        setError(res.message || 'Failed to extract certificate parameters.');
+        setError(res.message || t('ai_components.scanFailed'));
       }
     } catch (err) {
       console.error(err);
-      setError('OCR document scanning failed. Try typing leave fields manually.');
+      setError(t('ai_components.scanFailed'));
     } finally {
       setLoading(false);
     }
@@ -45,11 +47,11 @@ const AIOCRLeaveUpload = ({ onExtracted }) => {
     <div className="bg-white border border-gray-150 rounded-3xl p-5 shadow-md space-y-4 font-sans">
       <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5 uppercase tracking-wider pb-2 border-b border-gray-100">
         <FaRobot className="text-[#2E7D32]" />
-        <span>AI Medical Certificate OCR scanner</span>
+        <span>{t('ai_components.ocrTitle')}</span>
       </h3>
 
       <p className="text-[11px] text-gray-500 font-semibold leading-relaxed">
-        Upload a medical note or leave document. Our AI scans credentials to automatically fill the leave dates, child index, and medical reasons.
+        {t('ai_components.ocrSubtitle')}
       </p>
 
       <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -65,7 +67,7 @@ const AIOCRLeaveUpload = ({ onExtracted }) => {
           className="flex items-center justify-center gap-2 w-full sm:flex-1 py-3 px-4 bg-gray-50 hover:bg-gray-100 border border-dashed border-gray-300 rounded-xl text-xs font-bold text-gray-600 cursor-pointer transition"
         >
           <FaUpload />
-          <span>{file ? file.name : 'Select Certificate File'}</span>
+          <span>{file ? file.name : t('ai_components.selectCertFile')}</span>
         </label>
         
         <button
@@ -76,10 +78,10 @@ const AIOCRLeaveUpload = ({ onExtracted }) => {
           {loading ? (
             <>
               <FaSpinner className="animate-spin" />
-              <span>Scanning document...</span>
+              <span>{t('ai_components.scanningDoc')}</span>
             </>
           ) : (
-            <span>Scan & Auto-Fill</span>
+            <span>{t('ai_components.scanAndAutoFill')}</span>
           )}
         </button>
       </div>
@@ -95,12 +97,12 @@ const AIOCRLeaveUpload = ({ onExtracted }) => {
         <div className="p-3.5 bg-green-50 border border-green-200 text-green-800 text-xs font-bold rounded-2xl flex items-start gap-2.5">
           <FaRegCheckCircle className="text-base text-green-700 mt-0.5 shrink-0" />
           <div className="space-y-1">
-            <p className="text-green-900 font-black">AI Parameters Extracted successfully:</p>
+            <p className="text-green-900 font-black">{t('ai_components.extractedSuccess')}</p>
             <ul className="list-disc list-inside space-y-0.5 text-[10px] text-green-700 font-semibold mt-1">
-              <li>Student Name: {extractedData.studentName}</li>
-              <li>Doctor Name: {extractedData.doctorName}</li>
-              <li>Leave Dates: {extractedData.leaveDates}</li>
-              <li>Extracted Reason: "{extractedData.reason}"</li>
+              <li>{t('ai_components.studentName')}: {extractedData.studentName}</li>
+              <li>{t('ai_components.doctorName')}: {extractedData.doctorName}</li>
+              <li>{t('ai_components.leaveDates')}: {extractedData.leaveDates}</li>
+              <li>{t('ai_components.extractedReason')}: "{extractedData.reason}"</li>
             </ul>
           </div>
         </div>

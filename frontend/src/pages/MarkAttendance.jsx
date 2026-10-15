@@ -14,7 +14,8 @@ import {
   FaWifi,
   FaRegCheckCircle,
   FaExclamationCircle,
-  FaInfoCircle
+  FaInfoCircle,
+  FaUserFriends
 } from 'react-icons/fa';
 
 const MarkAttendance = () => {
@@ -22,9 +23,12 @@ const MarkAttendance = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   
+  const getLocalTodayDateStr = () =>
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+
   const [classes, setClasses] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState(searchParams.get('classId') || '');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getLocalTodayDateStr());
   const [students, setStudents] = useState([]);
   const [records, setRecords] = useState({}); // studentId -> { status, remarks }
   
@@ -42,7 +46,10 @@ const MarkAttendance = () => {
         const res = await getClasses();
         if (res.success && res.data.length > 0) {
           setClasses(res.data);
-          if (!selectedClassId) {
+          const paramClassId = searchParams.get('classId');
+          if (paramClassId && res.data.some(c => c._id === paramClassId)) {
+            setSelectedClassId(paramClassId);
+          } else if (!selectedClassId) {
             setSelectedClassId(res.data[0]._id);
           }
         }
@@ -51,7 +58,7 @@ const MarkAttendance = () => {
       }
     };
     fetchClasses();
-  }, [selectedClassId]);
+  }, []);
 
   // Load students & attendance logs for selected class and date
   const loadClassAttendance = useCallback(async () => {
@@ -222,7 +229,7 @@ const MarkAttendance = () => {
   const presentCount = Object.values(records).filter((r) => r.status === 'Present').length;
   const absentCount = Object.values(records).filter((r) => r.status === 'Absent').length;
   const lateCount = Object.values(records).filter((r) => r.status === 'Late').length;
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalTodayDateStr();
   const isPastDate = date !== todayStr;
   const isSubmissionDisabled = (alreadySubmitted && !allowMultiple) || isPastDate;
 
@@ -232,28 +239,28 @@ const MarkAttendance = () => {
       <div className="flex items-center gap-4">
         <button
           onClick={() => navigate(-1)}
-          className="p-2 text-gray-500 hover:text-gray-700 bg-white rounded-lg border border-gray-200 cursor-pointer"
+          className="p-2.5 text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xs cursor-pointer transition"
         >
-          <FaChevronLeft />
+          <FaChevronLeft className="text-sm" />
         </button>
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">{t('attendance.title')}</h2>
-          <p className="text-sm text-gray-500 font-medium">
-            {t('attendance.subtitle')}
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('attendance.title', 'Mark Attendance')}</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+            {t('attendance.subtitle', 'Take daily roll call registry. Logs are saved locally if offline.')}
           </p>
         </div>
       </div>
 
       {/* Select class and date toolbar */}
-      <div className="bg-white p-5 rounded-xl border border-gray-150 shadow-sm flex flex-col md:flex-row md:items-center gap-4">
+      <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xs flex flex-col md:flex-row md:items-center gap-4 transition-colors">
         <div className="flex-1">
-          <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
-            {t('classes.grade')}
+          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
+            {t('classes.grade', 'Grade / Standard')}
           </label>
           <select
             value={selectedClassId}
             onChange={(e) => setSelectedClassId(e.target.value)}
-            className="block w-full py-2.5 px-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary text-sm font-semibold text-gray-700"
+            className="block w-full py-2.5 px-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-[#2E7D32] text-sm font-semibold text-gray-800 dark:text-white transition"
           >
             {classes.map((cls) => (
               <option key={cls._id} value={cls._id}>
@@ -263,8 +270,8 @@ const MarkAttendance = () => {
           </select>
         </div>
 
-        <div className="w-full md:w-48">
-          <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
+        <div className="w-full md:w-52">
+          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
             Date
           </label>
           <input
@@ -272,13 +279,13 @@ const MarkAttendance = () => {
             max={new Date().toISOString().split('T')[0]}
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="block w-full py-2.5 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm font-semibold text-gray-700"
+            className="block w-full py-2.5 px-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-[#2E7D32] text-sm font-semibold text-gray-800 dark:text-white transition"
           />
         </div>
 
         <div className="flex items-end self-end h-full">
           {!isOnline && (
-            <span className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg">
+            <span className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl">
               <FaWifi />
               <span>{t('attendance.offlineMode')}</span>
             </span>
@@ -318,13 +325,25 @@ const MarkAttendance = () => {
       ) : students.length > 0 ? (
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Summary and Bulk Actions Bar */}
-          <div className="bg-white p-4 rounded-xl border border-gray-150 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             {/* Live Counters */}
-            <div className="flex items-center gap-4 text-sm font-bold text-gray-600">
-              <span>{t('dashboard_extra.total') || 'Total'}: {totalCount}</span>
-              <span className="text-green-700">{t('attendance.present')}: {presentCount}</span>
-              <span className="text-red-600">{t('attendance.absent')}: {absentCount}</span>
-              <span className="text-amber-600">{t('attendance.late')}: {lateCount}</span>
+            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs sm:text-sm font-bold">
+              <span className="px-3 py-1 bg-slate-100 dark:bg-slate-700/80 text-slate-700 dark:text-slate-200 rounded-lg border border-slate-200 dark:border-slate-600 flex items-center gap-1.5">
+                <span>{t('dashboard_extra.total', 'Total')}:</span>
+                <strong className="text-slate-900 dark:text-white font-extrabold">{totalCount}</strong>
+              </span>
+              <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 rounded-lg border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5">
+                <span>{t('attendance.present', 'Present')}:</span>
+                <strong className="text-emerald-800 dark:text-emerald-200 font-extrabold">{presentCount}</strong>
+              </span>
+              <span className="px-3 py-1 bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-300 rounded-lg border border-red-200 dark:border-red-800 flex items-center gap-1.5">
+                <span>{t('attendance.absent', 'Absent')}:</span>
+                <strong className="text-red-800 dark:text-red-200 font-extrabold">{absentCount}</strong>
+              </span>
+              <span className="px-3 py-1 bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-300 rounded-lg border border-amber-200 dark:border-amber-800 flex items-center gap-1.5">
+                <span>{t('attendance.late', 'Late')}:</span>
+                <strong className="text-amber-800 dark:text-amber-200 font-extrabold">{lateCount}</strong>
+              </span>
             </div>
 
             {/* Bulk set buttons */}
@@ -333,17 +352,17 @@ const MarkAttendance = () => {
                 type="button"
                 disabled={isSubmissionDisabled}
                 onClick={() => !isSubmissionDisabled && markAllStatus('Present')}
-                className="px-3 py-1.5 bg-green-50 hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed text-green-700 border border-green-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                className="px-3.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 disabled:opacity-50 disabled:cursor-not-allowed text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs font-bold transition-colors cursor-pointer"
               >
-                {t('attendance.markAllPresent')}
+                {t('attendance.markAllPresent', 'Mark All Present')}
               </button>
               <button
                 type="button"
                 disabled={isSubmissionDisabled}
                 onClick={() => !isSubmissionDisabled && markAllStatus('Absent')}
-                className="px-3 py-1.5 bg-red-50 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed text-red-600 border border-red-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                className="px-3.5 py-1.5 bg-red-50 dark:bg-red-950/50 hover:bg-red-100 dark:hover:bg-red-900/60 disabled:opacity-50 disabled:cursor-not-allowed text-red-600 dark:text-red-300 border border-red-200 dark:border-red-800 rounded-lg text-xs font-bold transition-colors cursor-pointer"
               >
-                {t('attendance.markAllAbsent')}
+                {t('attendance.markAllAbsent', 'Mark All Absent')}
               </button>
             </div>
           </div>
@@ -470,11 +489,15 @@ const MarkAttendance = () => {
           </div>
         </form>
       ) : (
-        <div className="p-8 bg-white border border-gray-150 rounded-xl text-center shadow-sm">
-          <FaRegCheckCircle className="text-4xl text-gray-300 mx-auto mb-3" />
-          <h3 className="text-lg font-bold text-gray-700">{t('students.noRecords')}</h3>
-          <p className="text-sm text-gray-400 mt-1">
-            {t('students.noRecords')}
+        <div className="p-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-center shadow-xs transition-colors">
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 flex items-center justify-center mx-auto mb-4 text-2xl">
+            <FaUserFriends />
+          </div>
+          <h3 className="text-lg font-bold text-gray-800 dark:text-white">
+            {t('students.noStudentsInClass', 'No Students Enrolled in this Class')}
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5 max-w-md mx-auto">
+            {t('students.noStudentsInClassDesc', 'No students are currently assigned to this class standard. Please select another class from the dropdown above.')}
           </p>
         </div>
       )}

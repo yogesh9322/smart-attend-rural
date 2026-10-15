@@ -1,28 +1,61 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { login as loginApi, googleLoginApi, getProfile } from '../services/api';
+import {
+  login as loginApi,
+  googleLoginApi,
+  getProfile,
+  setTabAuthContext,
+  clearTabAuthContext,
+} from '../services/api';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('smartattend_user') || localStorage.getItem('smartattend_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Hydrate user session on mount if token exists
+  // Sync active React user state into api.js tab context immediately
+  if (user) {
+    const existingToken = sessionStorage.getItem('token') || localStorage.getItem('token');
+    setTabAuthContext(existingToken, user);
+  }
+
+  useEffect(() => {
+    if (user) {
+      const existingToken = sessionStorage.getItem('token') || localStorage.getItem('token');
+      setTabAuthContext(existingToken, user);
+    }
+  }, [user]);
+
+  // Hydrate user session on mount if token or cached user exists
   useEffect(() => {
     const bootstrapAsync = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      const cachedUserRaw = sessionStorage.getItem('smartattend_user') || localStorage.getItem('smartattend_user');
+
+      if (token || cachedUserRaw) {
         try {
           const res = await getProfile();
-          if (res.success) {
+          if (res.success && res.data) {
             setUser(res.data);
-          } else {
-            localStorage.removeItem('token');
+            setTabAuthContext(token, res.data);
           }
         } catch (err) {
           console.error('Failed to load profile on bootstrap:', err.message);
-          localStorage.removeItem('token');
+          // Do not wipe localStorage token on transient network/restart errors
+          // If cachedUserRaw exists, keep user session alive
+          if (cachedUserRaw && !user) {
+            try {
+              setUser(JSON.parse(cachedUserRaw));
+            } catch {}
+          }
         }
       }
       setLoading(false);
@@ -37,16 +70,25 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await loginApi(email, password);
       if (res.success) {
-        localStorage.setItem('token', res.token);
-        const profileRes = await getProfile();
-        const fullUser = profileRes.success ? profileRes.data : res.user;
+        const fullUser = res.user;
+        setTabAuthContext(res.token, fullUser);
         setUser(fullUser);
         setLoading(false);
-        return { success: true, role: fullUser.role };
+        // Refresh profile non-blockingly in background
+        getProfile().then(pRes => {
+          if (pRes?.success) {
+            setUser(pRes.data);
+            setTabAuthContext(res.token, pRes.data);
+          }
+        }).catch(() => {});
+        return { success: true, role: fullUser.role, user: fullUser };
       }
       throw new Error(res.message || 'Login failed');
     } catch (err) {
-      const errMsg = err.response?.data?.message || err.message || 'Something went wrong';
+      let errMsg = err.response?.data?.message || err.message || 'Something went wrong';
+      if (errMsg === 'Network Error' || !err.response) {
+        errMsg = 'Network Error: Unable to reach the server. Please verify your internet connection or check if the backend server is running.';
+      }
       setError(errMsg);
       setLoading(false);
       return { success: false, error: errMsg };
@@ -59,16 +101,25 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await googleLoginApi(credential);
       if (res.success) {
-        localStorage.setItem('token', res.token);
-        const profileRes = await getProfile();
-        const fullUser = profileRes.success ? profileRes.data : res.user;
+        const fullUser = res.user;
+        setTabAuthContext(res.token, fullUser);
         setUser(fullUser);
         setLoading(false);
+        // Refresh profile non-blockingly in background
+        getProfile().then(pRes => {
+          if (pRes?.success) {
+            setUser(pRes.data);
+            setTabAuthContext(res.token, pRes.data);
+          }
+        }).catch(() => {});
         return { success: true, role: fullUser.role, user: fullUser };
       }
       throw new Error(res.message || 'Google Login failed');
     } catch (err) {
-      const errMsg = err.response?.data?.message || err.message || 'Google Sign-In failed.';
+      let errMsg = err.response?.data?.message || err.message || 'Google Sign-In failed.';
+      if (errMsg === 'Network Error' || !err.response) {
+        errMsg = 'Network Error: Unable to reach the server. Please verify your internet connection or check if the backend server is running.';
+      }
       setError(errMsg);
       setLoading(false);
       return { success: false, error: errMsg };
@@ -76,7 +127,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logoutUser = () => {
-    localStorage.removeItem('token');
+    clearTabAuthContext();
     setUser(null);
   };
 
@@ -84,6 +135,8 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await getProfile();
       if (res.success) {
+        const existingToken = sessionStorage.getItem('token') || localStorage.getItem('token');
+        setTabAuthContext(existingToken, res.data);
         setUser(res.data);
         return { success: true, data: res.data };
       }

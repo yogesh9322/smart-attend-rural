@@ -233,7 +233,7 @@ const SchoolSettings = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">{t('settings.schoolAddress') || 'Village/Street Address'}</label>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">{t('school  Address') || 'Village/Street Address'}</label>
                 <input
                   type="text"
                   required

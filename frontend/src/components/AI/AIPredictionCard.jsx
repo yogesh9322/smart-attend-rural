@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { predictStudentAttendance } from '../../services/api';
 import { FaRobot, FaExclamationTriangle, FaCheckCircle, FaSpinner } from 'react-icons/fa';
 
 const AIPredictionCard = ({ studentId }) => {
+  const { t } = useTranslation();
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -19,19 +21,19 @@ const AIPredictionCard = ({ studentId }) => {
         }
       } catch (err) {
         console.error(err);
-        setError('Prediction engine offline.');
+        setError(t('ai_components.predictionEngineOffline'));
       } finally {
         setLoading(false);
       }
     };
     fetchPrediction();
-  }, [studentId]);
+  }, [studentId, t]);
 
   if (loading) {
     return (
       <div className="bg-white border border-gray-150 rounded-3xl p-5 shadow flex items-center justify-center py-8">
         <FaSpinner className="animate-spin text-xl text-primary mr-2" />
-        <span className="text-xs text-gray-400 font-bold">Predicting attendance risk...</span>
+        <span className="text-xs text-gray-400 font-bold">{t('ai_components.predictingRisk')}</span>
       </div>
     );
   }
@@ -49,6 +51,15 @@ const AIPredictionCard = ({ studentId }) => {
     }
   };
 
+  const getRiskLevelText = (level) => {
+    switch (level) {
+      case 'Critical': return t('ai_components.criticalRisk');
+      case 'High': return t('ai_components.highRisk');
+      case 'Medium': return t('ai_components.mediumRisk');
+      default: return t('ai_components.lowRisk');
+    }
+  };
+
   return (
     <div className="bg-white border border-gray-150 rounded-3xl p-5 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 font-sans">
       <div className="flex items-center gap-3.5">
@@ -56,19 +67,19 @@ const AIPredictionCard = ({ studentId }) => {
           <FaRobot className="text-2xl animate-pulse" />
         </span>
         <div>
-          <h4 className="text-xs font-extrabold text-gray-450 uppercase tracking-widest">AI Attendance Risk Prediction</h4>
-          <h3 className="text-base font-black text-gray-800 mt-1">Absenteeism Risk Assessment</h3>
+          <h4 className="text-xs font-extrabold text-gray-450 uppercase tracking-widest">{t('ai_components.riskPredictionTitle')}</h4>
+          <h3 className="text-base font-black text-gray-800 mt-1">{t('ai_components.absenteeismAssessment')}</h3>
         </div>
       </div>
 
       <div className="flex-1 md:text-right flex items-center justify-end gap-3 flex-wrap md:flex-nowrap">
         <div className="text-left md:text-right">
-          <span className="text-[10px] text-gray-400 font-bold block uppercase tracking-wider">Attendance Probability</span>
+          <span className="text-[10px] text-gray-400 font-bold block uppercase tracking-wider">{t('ai_components.attendanceProbability')}</span>
           <span className="text-lg font-black text-gray-800 mt-0.5 block">{prediction.probability}%</span>
         </div>
         <div className={`px-3 py-1 rounded-full border text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1 ${getRiskBadgeColor(prediction.riskLevel)}`}>
           {prediction.riskLevel === 'Low' ? <FaCheckCircle /> : <FaExclamationTriangle />}
-          <span>{prediction.riskLevel} Risk</span>
+          <span>{getRiskLevelText(prediction.riskLevel)}</span>
         </div>
       </div>
 

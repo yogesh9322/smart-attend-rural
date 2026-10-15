@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { getStudents, getClasses, createStudent, updateStudent, deleteStudent, getStudentDetails, getAttendanceReport, getParentsAuthList } from '../services/api';
+import { getStudents, getClasses, createStudent, updateStudent, deleteStudent, getStudentDetails, getAttendanceReport, getParentsAuthList, createParent } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
   FaUserPlus,
@@ -11,7 +11,8 @@ import {
   FaTimes,
   FaSpinner,
   FaUserCircle,
-  FaEye
+  FaEye,
+  FaEyeSlash
 } from 'react-icons/fa';
 
 const getMediaUrl = (path) => {
@@ -54,6 +55,18 @@ const StudentManagement = () => {
   const [dob, setDob] = useState('');
   const [photoFile, setPhotoFile] = useState(null);
   const [status, setStatus] = useState('Active');
+
+  // Quick Add Parent State (inside student registration)
+  const [isQuickAddParentOpen, setIsQuickAddParentOpen] = useState(false);
+  const [newParentName, setNewParentName] = useState('');
+  const [newParentEmail, setNewParentEmail] = useState('');
+  const [newParentPhone, setNewParentPhone] = useState('');
+  const [newParentPassword, setNewParentPassword] = useState('');
+  const [newParentVillage, setNewParentVillage] = useState('');
+  const [newParentOccupation, setNewParentOccupation] = useState('');
+  const [quickParentLoading, setQuickParentLoading] = useState(false);
+  const [quickParentError, setQuickParentError] = useState('');
+  const [showQuickParentPassword, setShowQuickParentPassword] = useState(false);
 
   // Student Profile Drawer State
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -171,7 +184,8 @@ const StudentManagement = () => {
     }
   };
 
-  const openAddModal = () => {
+  const openAddModal = useCallback(() => {
+    setError('');
     setEditingStudent(null);
     setName('');
     setRollNo('');
@@ -183,15 +197,62 @@ const StudentManagement = () => {
     setPhotoFile(null);
     setStatus('Active');
     setIsModalOpen(true);
+  }, [classes, parents]);
+
+  // Auto-open Add Student modal if navigated with ?action=add
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'add') {
+      openAddModal();
+    }
+  }, [openAddModal]);
+
+  // Quick Add Parent Handler
+  const handleQuickAddParent = async (e) => {
+    e.preventDefault();
+    setQuickParentLoading(true);
+    setQuickParentError('');
+
+    try {
+      const res = await createParent({
+        name: newParentName,
+        email: newParentEmail,
+        phone: newParentPhone,
+        password: newParentPassword,
+        village: newParentVillage,
+        occupation: newParentOccupation,
+      });
+
+      if (res.success && res.data) {
+        const createdParent = res.data;
+        setParents((prev) => [createdParent, ...prev]);
+        setParentId(createdParent._id);
+        setIsQuickAddParentOpen(false);
+        setNewParentName('');
+        setNewParentEmail('');
+        setNewParentPhone('');
+        setNewParentPassword('');
+        setNewParentVillage('');
+        setNewParentOccupation('');
+      } else {
+        throw new Error(res.message || 'Failed to create parent account.');
+      }
+    } catch (err) {
+      console.error(err);
+      setQuickParentError(err.response?.data?.message || err.message || 'Error creating parent.');
+    } finally {
+      setQuickParentLoading(false);
+    }
   };
 
   const openEditModal = (student) => {
+    setError('');
     setEditingStudent(student._id);
     setName(student.name);
     setRollNo(student.rollNo);
     setAdmissionNo(student.admissionNo);
-    setClassId(student.classId?._id || '');
-    setParentId(student.parentId?._id || '');
+    setClassId(student.classId?._id || (typeof student.classId === 'string' ? student.classId : '') || classes[0]?._id || '');
+    setParentId(student.parentId?._id || (typeof student.parentId === 'string' ? student.parentId : '') || parents[0]?._id || '');
     setGender(student.gender || 'Male');
     setDob(student.dob ? student.dob.split('T')[0] : '');
     setPhotoFile(null);
@@ -666,56 +727,61 @@ const StudentManagement = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Student Name */}
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                    Student Name
+                  <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                    Student Name <span className="text-red-500 font-bold ml-0.5">*</span>
                   </label>
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Aarav Patel"
                     className="block w-full py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#2E7D32] text-xs font-semibold bg-gray-50 dark:bg-gray-750 text-gray-800 dark:text-gray-200"
                   />
                 </div>
 
                 {/* Admission number */}
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                    Admission Number
+                  <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                    Admission Number <span className="text-red-500 font-bold ml-0.5">*</span>
                   </label>
                   <input
                     type="text"
                     required
                     value={admissionNo}
                     onChange={(e) => setAdmissionNo(e.target.value)}
+                    placeholder="e.g. ADM2026-001"
                     className="block w-full py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#2E7D32] text-xs font-semibold bg-gray-50 dark:bg-gray-750 text-gray-800 dark:text-gray-200"
                   />
                 </div>
 
                 {/* Roll Number */}
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                    Roll Number
+                  <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                    Roll Number <span className="text-red-500 font-bold ml-0.5">*</span>
                   </label>
                   <input
                     type="text"
                     required
                     value={rollNo}
                     onChange={(e) => setRollNo(e.target.value)}
+                    placeholder="e.g. 101"
                     className="block w-full py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#2E7D32] text-xs font-semibold bg-gray-50 dark:bg-gray-750 text-gray-800 dark:text-gray-200"
                   />
                 </div>
 
                 {/* Class select */}
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                    Class & Section
+                  <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                    Class & Section <span className="text-red-500 font-bold ml-0.5">*</span>
                   </label>
                   <select
+                    required
                     value={classId}
                     onChange={(e) => setClassId(e.target.value)}
                     className="block w-full py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#2E7D32] text-xs font-semibold bg-gray-50 dark:bg-gray-750 text-gray-800 dark:text-gray-200"
                   >
+                    <option value="">-- Select Class & Section --</option>
                     {classes.map((cls) => (
                       <option key={cls._id} value={cls._id}>
                         {cls.grade} - {cls.section}
@@ -726,10 +792,23 @@ const StudentManagement = () => {
 
                 {/* Parent select */}
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                    Parent Contact
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">
+                      Parent Contact <span className="text-red-500 font-bold ml-0.5">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuickParentError('');
+                        setIsQuickAddParentOpen(true);
+                      }}
+                      className="text-[10px] font-bold text-[#2E7D32] hover:text-[#1B5E20] hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      + Add New Parent
+                    </button>
+                  </div>
                   <select
+                    required
                     value={parentId}
                     onChange={(e) => setParentId(e.target.value)}
                     className="block w-full py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#2E7D32] text-xs font-semibold bg-gray-50 dark:bg-gray-750 text-gray-800 dark:text-gray-200"
@@ -749,10 +828,11 @@ const StudentManagement = () => {
 
                 {/* Gender */}
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                    Gender
+                  <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                    Gender <span className="text-red-500 font-bold ml-0.5">*</span>
                   </label>
                   <select
+                    required
                     value={gender}
                     onChange={(e) => setGender(e.target.value)}
                     className="block w-full py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#2E7D32] text-xs font-semibold bg-gray-50 dark:bg-gray-750 text-gray-800 dark:text-gray-200"
@@ -765,11 +845,12 @@ const StudentManagement = () => {
 
                 {/* DOB */}
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                    Date of Birth
+                  <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                    Date of Birth <span className="text-red-500 font-bold ml-0.5">*</span>
                   </label>
                   <input
                     type="date"
+                    required
                     value={dob}
                     onChange={(e) => setDob(e.target.value)}
                     className="block w-full py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#2E7D32] text-xs font-semibold bg-gray-50 dark:bg-gray-750 text-gray-800 dark:text-gray-200"
@@ -828,6 +909,154 @@ const StudentManagement = () => {
                     </>
                   ) : (
                     <span>Save Student</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* QUICK ADD PARENT MODAL */}
+      {isQuickAddParentOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl border border-gray-150 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between px-5 py-3.5 bg-purple-700 text-white">
+              <div className="flex items-center gap-2">
+                <FaUserPlus className="text-base" />
+                <h3 className="text-sm font-bold">Register New Parent Account</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQuickAddParentOpen(false)}
+                className="text-white/80 hover:text-white cursor-pointer"
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <form onSubmit={handleQuickAddParent} className="p-5 space-y-3.5">
+              {quickParentError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-lg">
+                  {quickParentError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                  Parent Full Name <span className="text-red-500 font-bold ml-0.5">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newParentName}
+                  onChange={(e) => setNewParentName(e.target.value)}
+                  placeholder="e.g. Suresh Patel"
+                  className="block w-full py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-600 text-xs font-semibold bg-gray-50 dark:bg-gray-750 text-gray-800 dark:text-gray-200"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                    Email Address <span className="text-red-500 font-bold ml-0.5">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={newParentEmail}
+                    onChange={(e) => setNewParentEmail(e.target.value)}
+                    placeholder="parent@example.com"
+                    className="block w-full py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-600 text-xs font-semibold bg-gray-50 dark:bg-gray-750 text-gray-800 dark:text-gray-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                    Mobile Phone <span className="text-red-500 font-bold ml-0.5">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={newParentPhone}
+                    onChange={(e) => setNewParentPhone(e.target.value)}
+                    placeholder="10-digit number"
+                    className="block w-full py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-600 text-xs font-semibold bg-gray-50 dark:bg-gray-750 text-gray-800 dark:text-gray-200"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                  Login Password <span className="text-red-500 font-bold ml-0.5">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showQuickParentPassword ? 'text' : 'password'}
+                    required
+                    value={newParentPassword}
+                    onChange={(e) => setNewParentPassword(e.target.value)}
+                    placeholder="Min 6 characters"
+                    className="block w-full py-2 pl-3 pr-10 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-600 text-xs font-semibold bg-gray-50 dark:bg-gray-750 text-gray-800 dark:text-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickParentPassword(!showQuickParentPassword)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                    tabIndex="-1"
+                    aria-label={showQuickParentPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showQuickParentPassword ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                    Village
+                  </label>
+                  <input
+                    type="text"
+                    value={newParentVillage}
+                    onChange={(e) => setNewParentVillage(e.target.value)}
+                    placeholder="e.g. Shivajinagar"
+                    className="block w-full py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-600 text-xs font-semibold bg-gray-50 dark:bg-gray-750 text-gray-800 dark:text-gray-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                    Occupation
+                  </label>
+                  <input
+                    type="text"
+                    value={newParentOccupation}
+                    onChange={(e) => setNewParentOccupation(e.target.value)}
+                    placeholder="e.g. Farmer"
+                    className="block w-full py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-600 text-xs font-semibold bg-gray-50 dark:bg-gray-750 text-gray-800 dark:text-gray-200"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-150 dark:border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => setIsQuickAddParentOpen(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={quickParentLoading}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold shadow-2xs disabled:opacity-50 cursor-pointer transition-colors"
+                >
+                  {quickParentLoading ? (
+                    <>
+                      <FaSpinner className="animate-spin" />
+                      <span>Creating...</span>
+                    </>
+                  ) : (
+                    <span>Save & Select Parent</span>
                   )}
                 </button>
               </div>

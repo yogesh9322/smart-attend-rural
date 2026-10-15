@@ -208,7 +208,7 @@ const ClassManagement = () => {
         throw new Error(res.message || 'Creation failed.');
       }
     } catch (err) {
-      setError(err.message || 'Error creating class.');
+      setError(err.response?.data?.message || err.message || 'Error creating class.');
     } finally {
       setFormLoading(false);
     }
@@ -239,7 +239,7 @@ const ClassManagement = () => {
         throw new Error(data.message || 'Update failed.');
       }
     } catch (err) {
-      setError(err.message || 'Error updating class.');
+      setError(err.response?.data?.message || err.message || 'Error updating class.');
     } finally {
       setFormLoading(false);
     }
@@ -263,7 +263,7 @@ const ClassManagement = () => {
         throw new Error(data.message || 'Teacher assignment failed.');
       }
     } catch (err) {
-      setError(err.message || 'Error assigning teacher.');
+      setError(err.response?.data?.message || err.message || 'Error assigning teacher.');
     } finally {
       setFormLoading(false);
     }
@@ -288,7 +288,7 @@ const ClassManagement = () => {
         throw new Error(data.message || 'Transfer failed.');
       }
     } catch (err) {
-      setError(err.message || 'Error transferring students.');
+      setError(err.response?.data?.message || err.message || 'Error transferring students.');
     } finally {
       setFormLoading(false);
     }
@@ -298,7 +298,8 @@ const ClassManagement = () => {
   const handleToggleArchive = async (cls) => {
     setActiveMenuId(null);
     const actionStr = cls.isArchived || cls.status === 'Archived' ? 'reactivate' : 'archive';
-    if (!window.confirm(`Are you sure you want to ${actionStr} Grade ${cls.grade}-${cls.section}?`)) return;
+    const gradeLabel = String(cls.grade).startsWith('Grade') ? cls.grade : `Grade ${cls.grade}`;
+    if (!window.confirm(`Are you sure you want to ${actionStr} ${gradeLabel}-${cls.section}?`)) return;
 
     try {
       const data = await archiveClass(cls._id);
@@ -310,7 +311,7 @@ const ClassManagement = () => {
         throw new Error(data.message || 'Archive toggle failed.');
       }
     } catch (err) {
-      setError(err.message || 'Error updating archive status.');
+      setError(err.response?.data?.message || err.message || 'Error updating archive status.');
     }
   };
 
@@ -598,7 +599,9 @@ const ClassManagement = () => {
                         <FaDoorOpen /> {t('classes.location') || 'Room Location'}:
                       </span>
                       <span className="font-bold text-gray-800 dark:text-gray-100">
-                        {t('classes.room') || 'Room'} {cls.roomNo || 'N/A'}
+                        {cls.roomNo
+                          ? (String(cls.roomNo).toLowerCase().startsWith('room') ? cls.roomNo : `Room ${cls.roomNo}`)
+                          : 'N/A'}
                       </span>
                     </div>
                   </div>
@@ -881,7 +884,7 @@ const ClassManagement = () => {
                       {t('classes.title')}: {selectedClass.grade} - {selectedClass.section}
                     </h3>
                     <p className="text-gray-400 text-xs font-semibold">
-                      {t('classes.room') || 'Room'} {selectedClass.roomNo || 'N/A'} • {t('classes.academicYear')}: {selectedClass.academicYear || '2026-2027'}
+                      {selectedClass.roomNo ? (String(selectedClass.roomNo).toLowerCase().startsWith('room') ? selectedClass.roomNo : `Room ${selectedClass.roomNo}`) : 'N/A'} • {t('classes.academicYear')}: {selectedClass.academicYear || '2026-2027'}
                     </p>
                   </div>
                 </div>
@@ -997,7 +1000,7 @@ const ClassManagement = () => {
             <div className="flex items-center justify-between px-6 py-4 bg-teal-700 text-white">
               <h3 className="text-base font-bold flex items-center gap-2">
                 <FaChalkboardTeacher />
-                <span>{t('classes.teacher') || 'Assign Teacher'}: Grade {selectedClass.grade}-{selectedClass.section}</span>
+                <span>{t('classes.teacher') || 'Assign Teacher'}: {String(selectedClass.grade).startsWith('Grade') ? selectedClass.grade : `Grade ${selectedClass.grade}`}-{selectedClass.section}</span>
               </h3>
               <button onClick={() => setIsAssignTeacherModalOpen(false)} className="text-white hover:text-gray-200 cursor-pointer">
                 <FaTimes />
@@ -1035,7 +1038,7 @@ const ClassManagement = () => {
                   disabled={formLoading}
                   className="px-5 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-bold shadow-sm cursor-pointer disabled:opacity-50"
                 >
-                  {formLoading ? t('common.loading') : t('classes.teacher')}
+                  {formLoading ? t('common.loading') : 'Assign Teacher'}
                 </button>
               </div>
             </form>
@@ -1050,7 +1053,7 @@ const ClassManagement = () => {
             <div className="flex items-center justify-between px-6 py-4 bg-purple-700 text-white">
               <h3 className="text-base font-bold flex items-center gap-2">
                 <FaExchangeAlt />
-                <span>{t('classes.transferStudents')} from Grade {selectedClass.grade}-{selectedClass.section}</span>
+                <span>{t('classes.transferStudents')} from {String(selectedClass.grade).startsWith('Grade') ? selectedClass.grade : `Grade ${selectedClass.grade}`}-{selectedClass.section}</span>
               </h3>
               <button onClick={() => setIsTransferModalOpen(false)} className="text-white hover:text-gray-200 cursor-pointer">
                 <FaTimes />
@@ -1071,7 +1074,7 @@ const ClassManagement = () => {
                     .filter(c => c._id !== selectedClass._id)
                     .map(c => (
                       <option key={c._id} value={c._id}>
-                        Grade {c.grade}-{c.section} ({c.studentCount || 0}/{c.maxStudents || 40} {t('classes.transferStudents') === 'विद्यार्थ्यांचे स्थलांतर करा' ? 'नोंदणीकृत' : 'Enrolled'})
+                        {String(c.grade).startsWith('Grade') ? c.grade : `Grade ${c.grade}`}-{c.section} ({c.studentCount || 0}/{c.maxStudents || 40} {t('classes.transferStudents') === 'विद्यार्थ्यांचे स्थलांतर करा' ? 'नोंदणीकृत' : 'Enrolled'})
                       </option>
                     ))}
                 </select>

@@ -9,7 +9,7 @@ const { errorHandler } = require('./middleware/errorMiddleware');
 dotenv.config();
 
 // Connect to Database
-connectDB();
+const dbReady = connectDB();
 
 const app = express();
 const http = require('http');
@@ -26,6 +26,16 @@ app.use(cors());
 
 // Serve uploads folder statically for profile images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Ensure database connection is ready before handling API routes
+app.use('/api', async (req, res, next) => {
+  try {
+    await dbReady;
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
 // Routes files
 const authRoutes = require('./routes/authRoutes');
@@ -231,8 +241,8 @@ const seedDatabase = async () => {
   }
 };
 
-// Call Seeder
-seedDatabase();
+// Call Seeder after DB connection is established
+dbReady.then(() => seedDatabase());
 
 // Test API Health endpoint
 app.get('/health', (req, res) => {

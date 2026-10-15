@@ -21,13 +21,64 @@ const api = axios.create({
   },
 });
 
-// Intercept requests to inject the JWT token automatically
+let currentTabToken = null;
+let currentTabUser = null;
+
+export const setTabAuthContext = (token, user) => {
+  if (token) {
+    currentTabToken = token;
+    try {
+      sessionStorage.setItem('token', token);
+      localStorage.setItem('token', token);
+    } catch {}
+  }
+  if (user) {
+    currentTabUser = user;
+    try {
+      sessionStorage.setItem('smartattend_user', JSON.stringify(user));
+      localStorage.setItem('smartattend_user', JSON.stringify(user));
+    } catch {}
+  }
+};
+
+export const clearTabAuthContext = () => {
+  currentTabToken = null;
+  currentTabUser = null;
+  try {
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('smartattend_user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('smartattend_user');
+  } catch {}
+};
+
+// Intercept requests to inject the JWT token and active tab user context automatically
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token =
+      currentTabToken ||
+      sessionStorage.getItem('token') ||
+      localStorage.getItem('token');
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    let activeUser = currentTabUser;
+    if (!activeUser) {
+      try {
+        const raw = sessionStorage.getItem('smartattend_user') || localStorage.getItem('smartattend_user');
+        if (raw) activeUser = JSON.parse(raw);
+      } catch {}
+    }
+
+    if (activeUser?.email) {
+      config.headers['X-User-Email'] = activeUser.email;
+    }
+    if (activeUser?.role) {
+      config.headers['X-User-Role'] = activeUser.role;
+    }
+
     return config;
   },
   (error) => {
@@ -122,8 +173,36 @@ export const getAttendanceReport = async (filters = {}) => {
   return response.data;
 };
 
-export const getDashboardStats = async () => {
-  const response = await api.get('/attendance/stats');
+export const getStudentTodayStatus = async (studentId) => {
+  const response = await api.get(`/attendance/student-today/${studentId}`);
+  return response.data;
+};
+
+export const getStudentReportData = async (params = {}) => {
+  const response = await api.get('/attendance/student-report', { params });
+  return response.data;
+};
+
+export const downloadStudentReportCSV = async (params = {}) => {
+  const response = await api.get('/attendance/student-report', {
+    params: { ...params, format: 'csv' },
+    responseType: 'blob',
+  });
+  return response;
+};
+
+export const downloadAttendanceExport = async (params = {}) => {
+  const response = await api.get('/attendance/export-history', {
+    params,
+    responseType: 'blob',
+  });
+  return response;
+};
+
+export const downloadAttendanceHistoryExport = downloadAttendanceExport;
+
+export const getDashboardStats = async (params = {}) => {
+  const response = await api.get('/attendance/stats', { params });
   return response.data;
 };
 
@@ -183,8 +262,8 @@ export const deleteTeacherNotice = async (id) => {
   return response.data;
 };
 
-export const getParentNotices = async () => {
-  const response = await api.get('/notices/parent');
+export const getParentNotices = async (params = {}) => {
+  const response = await api.get('/notices/parent', { params });
   return response.data;
 };
 
@@ -362,8 +441,12 @@ export const updateSchoolSettings = async (settingsData) => {
   return response.data;
 };
 
-export const getActivityLogs = async () => {
-  const response = await api.get('/settings/logs');
+export const getActivityLogs = async (params = {}) => {
+  const cleanParams = Object.fromEntries(
+    Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+  );
+  const queryStr = new URLSearchParams(cleanParams).toString();
+  const response = await api.get(`/settings/logs${queryStr ? `?${queryStr}` : ''}`);
   return response.data;
 };
 
@@ -459,7 +542,10 @@ export const updateClass = async (id, classData) => {
 };
 
 export const assignClassTeacher = async (classId, teacherId) => {
-  const response = await api.put(`/classes/${classId}/assign-teacher`, { teacherId });
+  const response = await api.put(`/classes/${classId}/assign-teacher`, {
+    classTeacherId: teacherId,
+    teacherId,
+  });
   return response.data;
 };
 

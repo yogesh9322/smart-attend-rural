@@ -252,7 +252,9 @@ const EventsManagement = () => {
             ) : events.length === 0 ? (
               <div className="text-center py-12">
                 <FaCalendarAlt className="mx-auto text-3xl text-gray-300 mb-2" />
-                <p className="text-xs text-gray-400 font-bold">{t('students.noRecords')}</p>
+                <p className="text-xs text-gray-400 font-bold">
+                  {t('nav.calendar') === 'कैलेंडर' ? 'कोई कार्यक्रम या अवकाश प्रकाशित नहीं किया गया है।' : 'No school events or holidays published yet.'}
+                </p>
               </div>
             ) : (
               <div className="overflow-x-auto">

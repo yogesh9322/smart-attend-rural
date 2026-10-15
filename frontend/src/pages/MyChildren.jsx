@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { getAttendanceReport } from '../services/api';
-import { FaGraduationCap, FaUser, FaClock, FaCalendarCheck } from 'react-icons/fa';
+import { FaGraduationCap, FaChevronRight } from 'react-icons/fa';
 
 const MyChildren = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [childStats, setChildStats] = useState({});
@@ -49,106 +51,130 @@ const MyChildren = () => {
     }
   }, [user]);
 
+  const formatGradeStr = (classObj) => {
+    if (!classObj || !classObj.grade) return 'Student';
+    const cleanGrade = String(classObj.grade).replace(/^grade\s+/i, '').trim();
+    const section = classObj.section ? `-${classObj.section}` : '';
+    return `Grade ${cleanGrade}${section}`;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6 sm:space-y-7 font-sans text-slate-800 dark:text-[#F8FAFC]"
+      style={{ fontFamily: 'Inter, "Noto Sans Devanagari", system-ui, -apple-system, sans-serif' }}
+    >
       {/* Page Header */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-800">My Children</h2>
-        <p className="text-sm text-gray-500 font-medium">
-          Manage profiles and check attendance reports for linked students.
+        <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-[#F8FAFC]">
+          {t('my_children.title')}
+        </h1>
+        <p className="text-sm sm:text-base font-normal text-slate-500 dark:text-[#94A3B8] mt-1.5 leading-relaxed">
+          {t('my_children.subtitle')}
         </p>
       </div>
 
       {children.length === 0 ? (
-        <div className="text-center py-16 bg-white border border-gray-150 rounded-3xl shadow-sm">
-          <FaGraduationCap className="mx-auto text-5xl text-gray-300 mb-4 animate-pulse" />
-          <h3 className="text-lg font-bold text-gray-700">No Linked Children</h3>
-          <p className="text-sm text-gray-400 mt-1">
-            Please request the school registry admin to link student records to your parent account.
-          </p>
+        <div className="bg-white dark:bg-[#151E2E] border border-slate-200 dark:border-[#263247] rounded-2xl p-10 text-center max-w-md mx-auto shadow-2xs">
+          <FaGraduationCap className="mx-auto text-4xl text-slate-300 dark:text-slate-600 mb-3" />
+          <h3 className="text-base font-semibold text-slate-800 dark:text-[#F8FAFC]">
+            {t('my_children.noChildrenLinked')}
+          </h3>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
           {children.map((child) => {
             const stats = childStats[child._id] || { rate: 100, todayStatus: 'Not Marked' };
+            const initial = child.name ? child.name.charAt(0).toUpperCase() : 'C';
+            const gradeDisplay = formatGradeStr(child.classId);
+
             return (
               <div
                 key={child._id}
-                className="bg-white border border-gray-150 rounded-3xl p-6 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
+                className="bg-white dark:bg-[#151E2E] border border-slate-200 dark:border-[#263247] rounded-2xl p-5 sm:p-6 shadow-2xs hover:shadow-xs transition-all duration-200 flex flex-col justify-between space-y-5"
               >
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-green-50 text-[#2E7D32] border border-green-100 flex items-center justify-center text-lg font-extrabold">
-                        {child.name.charAt(0)}
+                  {/* Top row: Avatar + Name/Roll/Grade + Status Badge */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-emerald-50 dark:bg-[#062c1d] text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-center text-xl font-semibold shrink-0 shadow-2xs">
+                        {initial}
                       </div>
-                      <div>
-                        <h3 className="text-lg font-extrabold text-gray-800 tracking-tight">
+                      <div className="min-w-0">
+                        <h2 className="text-lg font-semibold text-slate-900 dark:text-[#F8FAFC] truncate leading-snug">
                           {child.name}
-                        </h3>
-                        <p className="text-xs text-gray-400 font-bold uppercase mt-0.5">
-                          Roll No: {child.rollNo} • Class {child.classId?.grade}-{child.classId?.section}
+                        </h2>
+                        <p className="text-xs sm:text-sm font-normal text-slate-500 dark:text-[#94A3B8] mt-0.5 truncate">
+                          {t('my_children.rollNo')} {child.rollNo || 'N/A'} • {gradeDisplay}
                         </p>
                       </div>
                     </div>
+
                     <span
-                      className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${
+                      className={`text-xs font-medium px-2.5 py-1 rounded-full border shrink-0 whitespace-nowrap ${
                         stats.todayStatus === 'Present'
-                          ? 'bg-green-50 border-green-150 text-green-700'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-[#062c1d] dark:text-emerald-300 dark:border-emerald-800/60'
                           : stats.todayStatus === 'Absent'
-                          ? 'bg-red-50 border-red-150 text-red-700 animate-pulse'
+                          ? 'bg-red-50 text-red-700 border-red-200 dark:bg-[#3b1212] dark:text-red-300 dark:border-red-800/60'
                           : stats.todayStatus === 'Late'
-                          ? 'bg-amber-50 border-amber-200 text-amber-800'
-                          : 'bg-gray-50 border-gray-200 text-gray-500'
+                          ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-[#36200d] dark:text-amber-300 dark:border-amber-800/60'
+                          : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-[#182235] dark:text-[#CBD5E1] dark:border-[#263247]'
                       }`}
                     >
                       {stats.todayStatus === 'Present'
-                        ? '🟢 Present'
+                        ? t('attendance.present')
                         : stats.todayStatus === 'Absent'
-                        ? '🔴 Absent Today'
+                        ? t('attendance.absent')
                         : stats.todayStatus === 'Late'
-                        ? '🟠 Late Today'
-                        : '⚪ Not Marked'}
+                        ? t('attendance.late')
+                        : t('teacher_dashboard.pending')}
                     </span>
                   </div>
 
-                  {/* Attendance Percentage progress circle/bar */}
-                  <div className="mt-6 space-y-2">
-                    <div className="flex items-center justify-between text-xs font-bold text-gray-500 uppercase tracking-wider">
-                      <span>Attendance score</span>
-                      <span className={stats.rate < 75 ? 'text-red-600 font-extrabold' : 'text-[#2E7D32] font-black'}>
+                  {/* Attendance Rate Section */}
+                  <div className="mt-5 space-y-2">
+                    <div className="flex items-center justify-between text-xs sm:text-sm">
+                      <span className="font-medium text-slate-600 dark:text-[#CBD5E1]">
+                        {t('parent_dashboard.attendanceRate')}
+                      </span>
+                      <span className="text-xl font-semibold text-slate-900 dark:text-[#F8FAFC]">
                         {stats.rate}%
                       </span>
                     </div>
-                    <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden border border-gray-50">
+
+                    <div className="w-full bg-slate-100 dark:bg-[#263247] h-2 rounded-full overflow-hidden">
                       <div
                         style={{ width: `${stats.rate}%` }}
                         className={`h-full rounded-full transition-all duration-500 ${
-                          stats.rate < 75 ? 'bg-red-600' : 'bg-[#2E7D32]'
+                          stats.rate < 50
+                            ? 'bg-red-500 dark:bg-red-400'
+                            : stats.rate < 75
+                            ? 'bg-amber-500 dark:bg-amber-400'
+                            : 'bg-emerald-600 dark:bg-emerald-500'
                         }`}
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
-                  <span className="text-[10px] font-extrabold text-gray-450 uppercase tracking-wider">
-                    Admission: {child.admissionNo}
+                {/* Footer row: Admission No. & View Action */}
+                <div className="pt-4 border-t border-slate-150 dark:border-[#263247] flex items-center justify-between text-xs">
+                  <span className="font-medium text-slate-500 dark:text-[#94A3B8]">
+                    {t('my_children.admissionNo')} {child.admissionNo || 'N/A'}
                   </span>
                   <button
                     onClick={() => navigate(`/child/${child._id}`)}
-                    className="flex items-center gap-1 text-xs font-bold text-[#2E7D32] hover:underline cursor-pointer"
+                    className="font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors inline-flex items-center gap-1 cursor-pointer"
                   >
-                    <span>View Child Details</span>
-                    <FaUser className="text-[10px]" />
+                    <span>{t('my_children.viewProfile')}</span>
+                    <FaChevronRight className="text-[10px]" />
                   </button>
                 </div>
               </div>

@@ -1,6 +1,14 @@
 const User = require('../models/User');
 const Student = require('../models/Student');
 const { logActivity } = require('../utils/activityLogger');
+const sendEmail = require('../utils/sendEmail');
+const sendSMS = require('../utils/sendSMS');
+const {
+  getSchoolName,
+  getAppBaseUrl,
+  buildWelcomeCredentialsEmail,
+  buildProfileUpdateEmail,
+} = require('../utils/emailBranding');
 
 // @desc    Get all parents
 // @route   GET /api/parents
@@ -49,14 +57,27 @@ const createParentProfile = async (req, res, next) => {
 
     await logActivity(req.user.id, 'CREATE_PARENT', `Created parent user: ${name} (${email})`, req);
 
+    // Resolve configured school name and base URL
+    const schoolName = await getSchoolName();
+    const appBaseUrl = getAppBaseUrl();
+    const loginUrl = `${appBaseUrl}/login`;
+
     // Send welcome email notification to parent
     try {
-      const sendEmail = require('../utils/sendEmail');
-      const loginUrl = `${process.env.CLIENT_URL || 'http://localhost:5174'}/login`;
+      const emailContent = buildWelcomeCredentialsEmail({
+        user: parent,
+        password: password || 'password123',
+        role: 'parent',
+        schoolName,
+        appBaseUrl,
+      });
+
       await sendEmail({
         email: parent.email,
-        subject: 'Welcome to SmartAttend - Added as Parent',
-        message: `Dear ${parent.name},\n\nWelcome to SmartAttend Rural!\n\nYou have been registered as a Parent by the school administration.\n\nHere are your login credentials to access your dashboard:\nEmail: ${parent.email}\nPassword: ${password || 'password123'}\n\nPlease log in at: ${loginUrl}\n\nThank you,\nSmartAttend Administration`,
+        subject: emailContent.subject,
+        message: emailContent.message,
+        html: emailContent.html,
+        schoolName,
       });
       await logActivity(req.user.id, 'EMAIL_NOTIFICATION_SENT', `Welcome email sent successfully to Parent ${parent.name} (${parent.email})`);
     } catch (mailErr) {
@@ -67,12 +88,10 @@ const createParentProfile = async (req, res, next) => {
     // Send welcome SMS notification to parent
     if (parent.phone) {
       try {
-        const sendSMS = require('../utils/sendSMS');
-        const loginUrl = `${process.env.CLIENT_URL || 'http://localhost:5174'}/login`;
         await sendSMS({
           phone: parent.phone,
           countryCode: parent.countryCode || '+91',
-          message: `SmartAttend Rural\n\nDear ${parent.name},\n\nWelcome to SmartAttend! Your Parent account has been created by the school administration.\n\nHere are your login credentials:\nEmail: ${parent.email}\nPassword: ${password || 'password123'}\n\nPlease log in at: ${loginUrl}\n\nThank you,\nABC Rural School`,
+          message: `SmartAttend Rural\n\nDear ${parent.name},\n\nWelcome to SmartAttend! Your Parent account has been created by the school administration at ${schoolName}.\n\nHere are your login credentials:\nEmail: ${parent.email}\nPassword: ${password || 'password123'}\n\nPlease log in at: ${loginUrl}\n\nThank you,\n${schoolName} | Powered by SmartAttend Rural`,
         });
         await logActivity(req.user.id, 'SMS_NOTIFICATION_SENT', `Welcome SMS sent successfully to Parent ${parent.name} (${parent.phone})`);
       } catch (smsErr) {
@@ -132,21 +151,32 @@ const updateParentProfile = async (req, res, next) => {
       if (oldDetails.address !== parent.address) changes.push(`- Address: "${oldDetails.address || 'N/A'}" ➔ "${parent.address || 'N/A'}"`);
 
       if (changes.length > 0) {
-        const loginUrl = `${process.env.CLIENT_URL || 'http://localhost:5174'}/login`;
+        const schoolName = await getSchoolName();
+        const appBaseUrl = getAppBaseUrl();
+        const loginUrl = `${appBaseUrl}/login`;
+
+        const emailContent = buildProfileUpdateEmail({
+          parentName: parent.name,
+          changes,
+          schoolName,
+          appBaseUrl,
+        });
+
         await sendEmail({
           email: parent.email,
-          subject: 'SmartAttend - Profile Details Updated',
-          message: `Dear ${parent.name},\n\nWe would like to inform you that your profile details have been updated by the school administration:\n\n${changes.join('\n')}\n\nPlease log in at: ${loginUrl} to review the changes.\n\nThank you,\nSmartAttend Administration`,
+          subject: emailContent.subject,
+          message: emailContent.message,
+          html: emailContent.html,
+          schoolName,
         });
 
         // Send profile update SMS alert to parent
         if (parent.phone) {
           try {
-            const sendSMS = require('../utils/sendSMS');
             await sendSMS({
               phone: parent.phone,
               countryCode: parent.countryCode || '+91',
-              message: `SmartAttend Rural\n\nDear ${parent.name},\n\nWe would like to inform you that your profile details have been updated by the school administration:\n\n${changes.join('\n')}\n\nPlease log in at: ${loginUrl} to review the changes.\n\nThank you,\nABC Rural School`,
+              message: `SmartAttend Rural\n\nDear ${parent.name},\n\nWe would like to inform you that your profile details have been updated by the school administration at ${schoolName}:\n\n${changes.join('\n')}\n\nPlease log in at: ${loginUrl} to review the changes.\n\nThank you,\n${schoolName} | Powered by SmartAttend Rural`,
             });
           } catch (smsErr) {
             console.error('Failed to send parent profile update SMS:', smsErr.message);

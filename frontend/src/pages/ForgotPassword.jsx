@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { forgotPassword } from '../services/api';
 import { FaSchool, FaEnvelope, FaArrowLeft, FaCheckCircle, FaSpinner } from 'react-icons/fa';
 
 const ForgotPassword = () => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -44,10 +46,10 @@ const ForgotPassword = () => {
               <FaSchool className="text-3xl" />
             </div>
             <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-              Forgot Password?
+              {t('forgot_password.title')}
             </h2>
             <p className="mt-2 text-sm text-gray-500 font-medium leading-relaxed">
-              Enter your registered email and we'll dispatch a link to reset your account password.
+              {t('forgot_password.subtitle')}
             </p>
           </div>
 
@@ -60,15 +62,12 @@ const ForgotPassword = () => {
                 <div className="p-4 rounded-xl bg-green-50 border border-green-150 text-green-800 text-xs font-bold leading-relaxed">
                   {message}
                 </div>
-                <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-250 text-amber-800 text-[10px] font-bold leading-relaxed">
-                  💡 <strong>Tip for Developers:</strong> If SMTP settings are unconfigured, check the backend console log for the reset link!
-                </div>
                 <Link
                   to="/login"
                   className="flex items-center justify-center gap-2 w-full px-4 py-3.5 text-sm font-bold text-[#2E7D32] hover:text-[#1B5E20] transition-colors cursor-pointer"
                 >
                   <FaArrowLeft />
-                  <span>Back to Login</span>
+                  <span>{t('forgot_password.backToLogin')}</span>
                 </Link>
               </div>
             ) : (
@@ -83,7 +82,7 @@ const ForgotPassword = () => {
                 {/* Email Input */}
                 <div>
                   <label htmlFor="email" className="block text-sm font-semibold text-gray-700">
-                    Email Address
+                    {t('login.emailLabel')}
                   </label>
                   <div className="mt-1 relative rounded-lg shadow-sm">
                     <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
@@ -98,7 +97,7 @@ const ForgotPassword = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2E7D32] focus:border-transparent text-gray-900 placeholder-gray-400 sm:text-sm font-medium"
-                      placeholder="Enter school email"
+                      placeholder={t('login.emailPlaceholder')}
                     />
                   </div>
                 </div>
@@ -112,7 +111,7 @@ const ForgotPassword = () => {
                   {loading ? (
                     <FaSpinner className="animate-spin text-xl" />
                   ) : (
-                    'Send Reset Link'
+                    t('forgot_password.sendInstructions')
                   )}
                 </button>
 
@@ -122,7 +121,7 @@ const ForgotPassword = () => {
                     className="inline-flex items-center gap-1 text-xs font-bold text-[#2E7D32] hover:underline animate-pulse"
                   >
                     <FaArrowLeft className="text-[10px]" />
-                    <span>Back to Login</span>
+                    <span>{t('forgot_password.backToLogin')}</span>
                   </Link>
                 </div>
               </form>

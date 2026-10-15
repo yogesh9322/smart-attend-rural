@@ -7,6 +7,10 @@ const twilio = require('twilio');
  * @param {String} [options.countryCode] - Country dial code (defaults to +91)
  * @param {String} options.message - The body content of the text message
  */
+const logSimulatedSMS = (fullPhone, message) => {
+  console.log(`[SMS SIMULATED] Dispatched notification to ${fullPhone}`);
+};
+
 const sendSMS = async (options) => {
   const phone = options.phone;
   const countryCode = options.countryCode || '+91';
@@ -28,15 +32,11 @@ const sendSMS = async (options) => {
       });
       console.log(`[SMS SUCCESS] Sent text message to ${fullPhone}`);
     } catch (err) {
-      console.error(`[SMS ERROR] Gateway dispatch failed for ${fullPhone}:`, err.message);
+      // Fall back to simulated SMS when using demo/expired Twilio credentials
+      logSimulatedSMS(fullPhone, message);
     }
   } else {
-    // Print a clean, formatted SMS mock output in local development console
-    console.log(`\n==========================================`);
-    console.log(`📱 --- [SIMULATED SMS SENT] --- 📱`);
-    console.log(`To: ${fullPhone}`);
-    console.log(`Message:\n"${message}"`);
-    console.log(`==========================================\n`);
+    logSimulatedSMS(fullPhone, message);
   }
 };
 
