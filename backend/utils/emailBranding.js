@@ -32,18 +32,18 @@ const getSchoolName = async () => {
  * @returns {string}
  */
 const getAppBaseUrl = () => {
-  let url = process.env.APP_BASE_URL || process.env.FRONTEND_URL || process.env.CLIENT_URL;
+  let url = process.env.CLIENT_URL || process.env.FRONTEND_URL || process.env.APP_BASE_URL;
   if (url && typeof url === 'string' && url.trim()) {
     url = url.trim().replace(/\/+$/, '');
     // In production, ensure no accidental localhost leakage
     if (process.env.NODE_ENV === 'production' && url.includes('localhost')) {
-      return (process.env.PRODUCTION_APP_URL || 'https://smartattend-rural.onrender.com').replace(/\/+$/, '');
+      return (process.env.PRODUCTION_FRONTEND_URL || process.env.CLIENT_URL || 'https://smart-attend-rural.vercel.app').replace(/\/+$/, '');
     }
     return url;
   }
 
   if (process.env.NODE_ENV === 'production') {
-    return (process.env.PRODUCTION_APP_URL || 'https://smartattend-rural.onrender.com').replace(/\/+$/, '');
+    return (process.env.PRODUCTION_FRONTEND_URL || process.env.CLIENT_URL || 'https://smart-attend-rural.vercel.app').replace(/\/+$/, '');
   }
 
   return 'http://localhost:5174';
@@ -53,8 +53,8 @@ const getAppBaseUrl = () => {
  * Returns consistent email sender details
  */
 const getSenderInfo = () => {
-  const displayName = 'SmartAttend Rural';
-  const emailAddress = process.env.FROM_EMAIL || process.env.SMTP_EMAIL || 'no-reply@smartattend-rural.org';
+  const displayName = (process.env.FROM_NAME || 'SmartAttend Rural').trim();
+  const emailAddress = (process.env.EMAIL_FROM || process.env.FROM_EMAIL || process.env.SMTP_EMAIL || 'notifications@smartattend-rural.org').trim();
   return {
     displayName,
     emailAddress,

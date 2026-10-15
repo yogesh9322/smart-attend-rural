@@ -483,10 +483,14 @@ const forgotPassword = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Please provide an email address' });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: String(email).trim().toLowerCase() });
 
     if (!user) {
-      return res.status(404).json({ success: false, message: 'No user registered with this email address' });
+      // Security: avoid email enumeration by returning generic success response
+      return res.status(200).json({
+        success: true,
+        message: 'If an account exists with this email address, a password reset link has been dispatched.',
+      });
     }
 
     // Get reset token
@@ -514,11 +518,14 @@ const forgotPassword = async (req, res, next) => {
         schoolName,
       });
 
-      await logActivity(user._id, 'EMAIL_NOTIFICATION_SENT', `Password reset email successfully sent to ${user.email}`);
+      await logActivity(user._id, 'EMAIL_NOTIFICATION_SENT', `Password reset email successfully dispatched for ${user.email}`);
 
-      res.status(200).json({ success: true, message: 'Password reset link sent to your email.' });
+      res.status(200).json({
+        success: true,
+        message: 'If an account exists with this email address, a password reset link has been dispatched.',
+      });
     } catch (err) {
-      console.error(err);
+      console.error(`Password reset dispatch error for user:`, err.message);
       await logActivity(user._id, 'EMAIL_NOTIFICATION_FAILED', `Failed to send password reset email to ${user.email}. Error: ${err.message}`);
       user.resetPasswordToken = undefined;
       user.resetPasswordExpire = undefined;

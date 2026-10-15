@@ -5,13 +5,14 @@ const {
   forgotPassword, resetPassword, updateProfile, changePassword, googleLogin
 } = require('../controllers/authController');
 const { protect, authorize } = require('../middleware/authMiddleware');
+const { forgotPasswordLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
 router.post('/login', loginUser);
 router.post('/google', googleLogin);
 router.post('/register', protect, authorize('admin'), registerUser);
-router.post('/forgotpassword', forgotPassword);
+router.post('/forgotpassword', forgotPasswordLimiter, forgotPassword);
 router.put('/resetpassword/:resettoken', resetPassword);
 router.get('/profile', protect, getMe);
 router.put('/profile', protect, updateProfile);

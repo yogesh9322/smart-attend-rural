@@ -8,6 +8,9 @@ const { errorHandler } = require('./middleware/errorMiddleware');
 // Load env variables
 dotenv.config();
 
+const validateEnv = require('./config/validateEnv');
+validateEnv();
+
 // Connect to Database
 const dbReady = connectDB();
 

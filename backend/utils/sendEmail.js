@@ -1,34 +1,37 @@
-const nodemailer = require('nodemailer');
+const { sendViaResend } = require('../services/emailService');
 const {
-  getSenderInfo,
   getSchoolName,
   getSignatureText,
   wrapEmailHtml,
 } = require('./emailBranding');
 
 /**
- * Centralized email sending utility for SmartAttend Rural
- * Enforces standardized sender identity, branding, and dynamic school signatures.
+ * Centralized email sending utility for SmartAttend Rural.
+ * Uses Resend over HTTPS for reliable production email delivery.
  * 
  * @param {Object} options
- * @param {string} options.email - Recipient email address
+ * @param {string} [options.email] - Recipient email address
+ * @param {string} [options.to] - Alternative alias for recipient email
  * @param {string} options.subject - Email subject
- * @param {string} options.message - Plain text message
+ * @param {string} [options.message] - Plain text message
+ * @param {string} [options.text] - Alternative alias for plain text
  * @param {string} [options.html] - HTML body (auto-generated if omitted)
  * @param {string} [options.schoolName] - Configured school name override (optional)
+ * @returns {Promise<{ success: boolean, id: string, provider: string }>}
  */
 const sendEmail = async (options) => {
-  const sender = getSenderInfo();
+  const recipient = (options.email || options.to || '').trim();
+  const subject = (options.subject || '').trim();
   const schoolName = options.schoolName || await getSchoolName();
   const signature = getSignatureText(schoolName);
 
-  // Ensure plain text ends with consistent signature
-  let textBody = options.message || '';
-  if (!textBody.includes('Powered by SmartAttend Rural')) {
-    textBody = textBody.trim() + `\n\nThank you,\n${signature}`;
+  // 1. Ensure plain text ends with consistent signature
+  let textBody = (options.message || options.text || '').trim();
+  if (textBody && !textBody.includes('Powered by SmartAttend Rural')) {
+    textBody = `${textBody}\n\nThank you,\n${signature}`;
   }
 
-  // Ensure HTML body exists and adheres to standardized template
+  // 2. Ensure HTML body exists and adheres to standardized template
   let htmlBody = options.html;
   if (!htmlBody && textBody) {
     const formattedParagraphs = textBody
@@ -37,60 +40,73 @@ const sendEmail = async (options) => {
       .join('');
 
     htmlBody = wrapEmailHtml({
-      title: options.subject,
+      title: subject,
       subtitle: 'SmartAttend Rural School Notification',
       schoolName,
       bodyHtml: formattedParagraphs,
     });
   }
 
-  // If SMTP configurations are not fully configured in env, log to console as fallback
-  if (!process.env.SMTP_HOST || !process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
-    console.log('\n=======================================');
-    console.log('       --- MOCK EMAIL DISPATCHED ---');
-    console.log(`From: ${sender.formatted}`);
-    console.log(`To: ${options.email}`);
-    console.log(`Subject: ${options.subject}`);
-    console.log(`School: ${schoolName}`);
-    console.log(`Message:\n${textBody}`);
-    console.log('=======================================\n');
-    return { success: true, mock: true };
-  }
-
-  try {
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
-      secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
-      auth: {
-        user: process.env.SMTP_EMAIL,
-        pass: process.env.SMTP_PASSWORD,
-      },
-      family: 4, // Force IPv4 only to prevent Render ENETUNREACH errors over IPv6
-    });
-
-    const mailOptions = {
-      from: sender.formatted,
-      to: options.email,
-      subject: options.subject,
+  // 3. Primary Delivery: Resend via HTTPS API
+  if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim()) {
+    return await sendViaResend({
+      to: recipient,
+      subject,
       text: textBody,
       html: htmlBody,
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-    return info;
-  } catch (err) {
-    console.warn(`\n[SMTP WARNING] connection failed: ${err.message}. Falling back to console logging.`);
-    console.log('\n======================================================');
-    console.log('    --- SMTP FAIL FALLBACK: MOCK EMAIL SENT ---');
-    console.log(`From: ${sender.formatted}`);
-    console.log(`To: ${options.email}`);
-    console.log(`Subject: ${options.subject}`);
-    console.log(`School: ${schoolName}`);
-    console.log(`Message:\n${textBody}`);
-    console.log('======================================================\n');
-    return { success: true, mock: true, error: err.message };
+    });
   }
+
+  // 4. In production, Resend is mandatory because outbound SMTP is blocked
+  if (process.env.NODE_ENV === 'production') {
+    const err = new Error('RESEND_API_KEY is not configured in production environment. Email delivery aborted.');
+    console.error(`[Email Error] ${err.message}`);
+    throw err;
+  }
+
+  // 5. Optional local development fallback via SMTP (if explicitly configured)
+  if (process.env.SMTP_HOST && process.env.SMTP_EMAIL && process.env.SMTP_PASSWORD) {
+    try {
+      const nodemailer = require('nodemailer');
+      const { getSenderInfo } = require('./emailBranding');
+      const sender = getSenderInfo();
+
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT || '587', 10),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.SMTP_EMAIL,
+          pass: process.env.SMTP_PASSWORD,
+        },
+        family: 4,
+      });
+
+      const info = await transporter.sendMail({
+        from: sender.formatted,
+        to: recipient,
+        subject,
+        text: textBody,
+        html: htmlBody,
+      });
+
+      return {
+        success: true,
+        id: info.messageId,
+        provider: 'smtp-fallback',
+      };
+    } catch (smtpErr) {
+      console.error(`[SMTP Error] Delivery failed: ${smtpErr.message}`);
+      throw new Error(`SMTP fallback delivery failed: ${smtpErr.message}`);
+    }
+  }
+
+  // 6. Neither Resend nor SMTP is configured
+  const noConfigErr = new Error(
+    'No email service configured. Please set RESEND_API_KEY and EMAIL_FROM in your environment.'
+  );
+  console.error(`[Email Config Error] ${noConfigErr.message}`);
+  throw noConfigErr;
 };
 
 module.exports = sendEmail;
