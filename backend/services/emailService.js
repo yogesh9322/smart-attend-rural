@@ -34,14 +34,20 @@ const maskEmail = (email) => {
  */
 const getSenderAddress = () => {
   const displayName = (process.env.FROM_NAME || 'SmartAttend Rural').trim();
-  const fromEmail = (process.env.EMAIL_FROM || process.env.FROM_EMAIL || '').trim();
+  let fromEmail = (process.env.EMAIL_FROM || process.env.FROM_EMAIL || '').trim();
 
   if (!fromEmail) {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('EMAIL_FROM is required in production environment.');
     }
-    // In local development, fall back to Resend default onboarding sender
     return `${displayName} <onboarding@resend.dev>`;
+  }
+
+  // Resend strictly forbids sending from public domains (@gmail.com, @yahoo.com, etc.)
+  const isPublicDomain = /@(gmail|yahoo|hotmail|outlook|live)\.com$/i.test(fromEmail);
+  if (isPublicDomain) {
+    console.warn(`[Email Service Warning] "${fromEmail}" is a public domain address. Resend requires a verified domain to send from custom addresses. Falling back to "onboarding@resend.dev". To use your own domain, verify it at https://resend.com/domains.`);
+    fromEmail = 'onboarding@resend.dev';
   }
 
   if (fromEmail.includes('<') && fromEmail.includes('>')) {
