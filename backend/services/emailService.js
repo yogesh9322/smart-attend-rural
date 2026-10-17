@@ -143,6 +143,9 @@ const sendViaResend = async (options) => {
   if (result.error) {
     const errorDetails = result.error.message || JSON.stringify(result.error);
     console.error(`[Resend Error] Delivery rejected for ${maskEmail(recipient)}: ${errorDetails}`);
+    if (errorDetails.toLowerCase().includes('verify a domain') || errorDetails.toLowerCase().includes('testing emails')) {
+      console.warn(`[Resend Sandbox Notice] Resend test domain restriction active. In sandbox mode, Resend only delivers to your account owner email. To send emails to all teachers, parents, and students, verify your custom domain at https://resend.com/domains and set EMAIL_FROM=notifications@yourdomain.com in Render.`);
+    }
     const err = new Error(`Resend email delivery failed: ${errorDetails}`);
     err.statusCode = result.error.statusCode || 500;
     err.providerError = result.error;
