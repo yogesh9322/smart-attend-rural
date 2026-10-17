@@ -4,20 +4,27 @@ const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) return savedTheme;
-    // Check system preference
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    // Check if user explicitly toggled theme previously
+    const userTheme = localStorage.getItem('smartattend_user_theme');
+    if (userTheme === 'dark' || userTheme === 'light') {
+      return userTheme;
+    }
+    // Clear legacy system auto-detected theme if present
+    try {
+      localStorage.removeItem('theme');
+    } catch (e) {}
+    // Always default to 'light' across all devices (signature green & clean light appearance)
+    return 'light';
   });
 
   useEffect(() => {
     const root = window.document.documentElement;
     if (theme === 'dark') {
       root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+      localStorage.setItem('smartattend_user_theme', 'dark');
     } else {
       root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+      localStorage.setItem('smartattend_user_theme', 'light');
     }
   }, [theme]);
 
